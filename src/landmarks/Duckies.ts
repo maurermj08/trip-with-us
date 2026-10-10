@@ -14,7 +14,7 @@ import { ZONES } from '../world/Route';
 
 const LOT = ROAD_FAR - 4;
 
-class PylonSign extends Prop {
+export class PylonSign extends Prop {
   private disc = new Container();
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, LOT - 30);
@@ -48,7 +48,7 @@ class PylonSign extends Prop {
   }
 }
 
-class Canopy extends Prop {
+export class Canopy extends Prop {
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, LOT);
     this.layer = 'back';
@@ -79,7 +79,7 @@ class Canopy extends Prop {
   }
 }
 
-class Pump extends Prop {
+export class Pump extends Prop {
   private nozzle = new Container();
   private body = new Container();
   constructor(ctx: Ctx, x: number) {
@@ -124,7 +124,7 @@ class Pump extends Prop {
   }
 }
 
-class Store extends Prop {
+export class Store extends Prop {
   private door = new Container();
   private doorL = new Graphics();
   private doorR = new Graphics();
@@ -262,7 +262,7 @@ class Store extends Prop {
   }
 }
 
-class DuckStatue extends Prop {
+export class DuckStatue extends Prop {
   private duck = new Container();
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, LOT - 36);

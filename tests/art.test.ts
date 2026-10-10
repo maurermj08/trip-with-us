@@ -106,6 +106,15 @@ describe('art library', () => {
     expect(d.roof.y).toBeLessThan(-85);
   });
 
+  it('every vehicle part has a unique name', async () => {
+    const { listParts, duplicatePartNames } = await import('../src/vehicle/art/parts');
+    for (const v of lib.vehicles) {
+      const parts = listParts(xmlDom.parse(v.svg));
+      expect(duplicatePartNames(parts), v.def.id).toEqual([]);
+      expect(parts.map((p) => p.path)).toContain('body/mirror');
+    }
+  });
+
   it('generated specs match the committed (or hand-edited) art layers', () => {
     for (const v of lib.vehicles) {
       const spec = JSON.parse(readFileSync(`art/vehicles/${v.def.id}/spec.json`, 'utf8'));

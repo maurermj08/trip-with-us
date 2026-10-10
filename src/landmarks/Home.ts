@@ -9,7 +9,7 @@ import { ROAD_FAR } from '../world/Road';
 
 const YARD = ROAD_FAR - 16;
 
-class House extends Prop {
+export class House extends Prop {
   private door = new Graphics();
   private windows: { g: Graphics; lit: boolean; x: number; y: number }[] = [];
   private doorOpen = false;
@@ -106,7 +106,7 @@ class House extends Prop {
   }
 }
 
-class BigTree extends Prop {
+export class BigTree extends Prop {
   private crown = new Container();
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, YARD);
@@ -130,7 +130,7 @@ class BigTree extends Prop {
   }
 }
 
-class Mailbox extends Prop {
+export class Mailbox extends Prop {
   private flag = new Graphics();
   private up = false;
   constructor(ctx: Ctx, x: number) {

@@ -18,11 +18,13 @@ art/
 reference/           ← reference photos (git-ignored: never committed or published)
 ```
 
-## Look at your work: the Vehicle Lab
+## Look at your work: the /dev sandbox
 
-```sh
-npm run lab          # opens http://localhost:5173/lab.html
-```
+Go to the **`/dev/`** path of the game:
+- live: `https://<you>.github.io/trip-with-us/dev/`
+- locally: `http://localhost:5173/dev/` while `npm run dev` is running
+
+Pick **Vehicles** in the sidebar. The settings panel lets you:
 
 - **Pick:** the vehicle, paint, wheels and accessories.
 - **Animate:** speed, bounce, lights, brake, hazards, wet and mud.
@@ -31,7 +33,21 @@ npm run lab          # opens http://localhost:5173/lab.html
 - **Recolor test:** turns every recolorable color magenta. Anything that stays its original color isn't using a token (see Colors below).
 - **Validation:** the same checks as `npm run art:check`.
 
-**Saving an SVG reloads the Lab automatically.**
+**Saving an SVG reloads the sandbox automatically when it's running locally.**
+
+**Reporting a problem:** every item in the sandbox has two reference IDs at the top of the right panel, each with a Copy button.
+- **Object:** just the thing, e.g. `vehicle/subaru-forester-2019`.
+- **Object + config:** the thing plus its current settings, e.g. `vehicle/subaru-forester-2019?acc=bike-rack`.
+
+Paste either one to Claude. Opening `…/dev/#<id>` restores that exact view.
+
+## Colors kids can pick
+
+`art/paints.json` is the **shared palette**: silver, white, black, and the paint-can colors on the garage shelf.
+- **Every vehicle offers it** automatically, after its own factory paints from `vehicle.json` → `paints`.
+- **Duplicates are skipped:** a shared color that looks the same as a factory color is left out.
+- **The shelf follows the file:** add a color there and every car gets it, and the garage shelf gets a new can.
+- **In the garage:** tapping a can paints the car. The picked color carries over when switching to another model that offers it.
 
 ## Rules for a vehicle `art.svg`
 
@@ -53,6 +69,23 @@ Lowercase, with hyphens. Illustrator saves each layer name as the group id.
 | `anchor-exhaust` | where exhaust puffs come out |
 | `anchor-hitch` | optional: where a hitch accessory (bike rack) mounts |
 | `opt-…` | optional parts that accessories switch on, e.g. `opt-crossbars` under a roof box |
+
+### Named parts (sublayers of `body`)
+
+Every part inside `body` is its own named group, which shows up as a named sublayer in Illustrator:
+- `greenhouse`, `shell`
+- `window-front`, `window-mid`, `window-rear`
+- `bands` › `lower-band`, `gloss`, `rocker`
+- `roof`, `rails`, `arch-front`, `arch-rear`, `skid-strip`
+- `door-seam-front`, `door-seam-rear`, `door-handle-front`, `door-handle-rear`
+- `side-scuttle`, `mirror`, `headlight`, `taillight`, `indicator`
+
+**Naming rules:**
+- Keep the names unique within a file. The validator warns on duplicates.
+- Number repeated parts with position words or letters (`-front`, `-mid`, `-rear`, `-a`, `-b`). Don't use `-2`, which reads as an Illustrator duplicate-name suffix.
+- Name any new part you draw, so it can be called out.
+
+**Calling out a part:** in `/dev`, open the vehicle and use the **Parts** list. Hovering highlights a part; clicking selects it. You can also turn on **Pick on canvas** and click the car. Then copy the **Object + config + part** ID, e.g. `vehicle/mini-countryman-2019?acc=roof-box&part=body/mirror`.
 
 ### Working with layers
 - Layers may be nested. Illustrator's own wrapper groups (like `Layer_1`) are fine.
@@ -85,14 +118,14 @@ Use **File › Save As › SVG**, with these settings:
 
 ## Your edits are safe from the generator
 
-`npm run art:gen` only overwrites an `art.svg` it wrote itself and that hasn't changed since. Once you edit a file in Illustrator, the generator leaves it alone. Instead it writes `art.generated.svg` next to it, which is git-ignored, so you can compare old and new in the Lab. `--force` overrides this. To lock a file permanently, set `"art": "hand"` in `vehicle.json`.
+`npm run art:gen` only overwrites an `art.svg` it wrote itself and that hasn't changed since. Once you edit a file in Illustrator, the generator leaves it alone. Instead it writes `art.generated.svg` next to it, which is git-ignored, so you can compare old and new in the sandbox. `--force` overrides this. To lock a file permanently, set `"art": "hand"` in `vehicle.json`.
 
 ## Adding a new car
 
 1. **Photo:** put a clean side-profile photo in `reference/`, such as `reference/outback.jpg`.
 2. **Data files:** create `art/vehicles/<brand>-<model>-<year>/` with `vehicle.json`, `spec.json` and `reference.json`. Copy the Forester's and adjust them; Claude can write these from the photo.
 3. **Draft:** run `npm run art:gen -- <id>` to get a draft `art.svg` that already follows the style rules.
-4. **Compare:** run `npm run lab`, turn on **True proportions** and **Reference photo**, and tweak `spec.json` until the silhouette matches.
+4. **Compare:** open `/dev/` locally, pick the vehicle, turn on **True proportions** and **Reference photo**, and tweak `spec.json` until the silhouette matches.
 5. **Finish:** do the final touch-ups in Illustrator.
 6. **Check:** run `npm run art:check` (also part of `npm test`).
 

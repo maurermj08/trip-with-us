@@ -19,6 +19,8 @@ export interface VehicleSpec {
   arches: { r: number; well: number; slot: 'clad' | 'paint' };
   /** Lower cladding strip [y0, y1] following the body shape. */
   rocker?: [number, number];
+  /** Black lower bumpers: cladding from the ground up to `y`, from `x` out to the bumper end. */
+  lowerClad?: { front?: [number, number]; rear?: [number, number] };
   /** Darker lower paint band [y0, y1]. */
   lowerBand: [number, number];
   /** Gloss stripe height. */
@@ -34,7 +36,10 @@ export interface VehicleSpec {
   /** Door seam vertical span [y0, y1]. */
   seamSpan: [number, number];
   handles: { x: number[]; y: number; w: number };
-  scuttle?: { x: number; y: number; w: number; h: number };
+  /** Side vent behind the front wheel: a box, or a shaped badge (chrome frame + dark inset) with an optional bar. */
+  scuttle?: { x: number; y: number; w: number; h: number } | { points: SpecPoint[]; bar?: [number, number, number, number] };
+  /** Shark-fin antenna on the roof (base center x, base y, height). */
+  antenna?: { x: number; y: number; h: number };
   hazards: { front: [number, number]; rear: [number, number] };
   exhaust: [number, number];
 }

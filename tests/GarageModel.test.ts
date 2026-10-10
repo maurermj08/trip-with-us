@@ -95,4 +95,34 @@ describe('GarageModel', () => {
     m.select(acc('skis'));
     expect(m.choice.accessoryIds).toEqual(['skis']);
   });
+
+  it('a picked color carries over to other models that offer it', () => {
+    const m = start();
+    m.level = 'custom';
+    // forester offers silver/red; mini only p1
+    m.choice = { vehicleId: 'forester', paintId: 'silver', wheelId: 'w1', accessoryIds: [] };
+    expect(m.setPaint('red')).toBe(true);
+    expect(m.setPaint('nope')).toBe(false);
+    m.select({ key: 'm', kind: 'model', id: 'outback', caption: '', selected: false });
+    expect(m.choice.paintId).toBe('p1'); // outback has no red: factory color
+    m.setPaint('p1');
+    m.select({ key: 'm', kind: 'model', id: 'forester', caption: '', selected: false });
+    expect(m.choice.paintId).toBe('silver'); // forester has no p1: factory color
+    m.setPaint('red');
+    m.select({ key: 'm', kind: 'model', id: 'outback', caption: '', selected: false });
+    m.select({ key: 'm', kind: 'model', id: 'forester', caption: '', selected: false });
+    expect(m.choice.paintId).toBe('silver'); // the last pick (p1, via outback's default) isn't on forester
+  });
+
+  it('keeps the chosen color when the next model offers it', () => {
+    const m = start();
+    m.choice = { vehicleId: 'forester', paintId: 'silver', wheelId: 'w1', accessoryIds: [] };
+    expect(m.setPaint('red')).toBe(true);
+    // a second subaru that also offers red
+    const cat2: Catalog = { ...cat, vehiclesOf: (b) => [...cat.vehiclesOf(b), v('crosstrek', 'subaru', { paints: [{ id: 'red', name: 'R', swatch: '#c00', slots: {} }, { id: 'blue', name: 'B', swatch: '#00c', slots: {} }] })], vehicle: (id) => (id === 'crosstrek' ? cat2.vehiclesOf('subaru').find((x) => x.id === id)! : cat.vehicle(id)) };
+    const m2 = new GarageModel(cat2, m.choice);
+    m2.setPaint('red');
+    m2.select({ key: 'm', kind: 'model', id: 'crosstrek', caption: '', selected: false });
+    expect(m2.choice.paintId).toBe('red');
+  });
 });

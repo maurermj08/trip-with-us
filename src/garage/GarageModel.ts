@@ -112,9 +112,7 @@ export class GarageModel {
         return { vehicle: changed, look: false, level: true };
       }
       case 'paint':
-        if (this.choice.paintId === chip.id) return NONE;
-        this.choice.paintId = chip.id;
-        return { vehicle: false, look: true, level: false };
+        return this.setPaint(chip.id) ? { vehicle: false, look: true, level: false } : NONE;
       case 'wheel':
         if (this.choice.wheelId === chip.id) return NONE;
         this.choice.wheelId = chip.id;
@@ -131,11 +129,24 @@ export class GarageModel {
     return { vehicle: false, look: false, level: true };
   }
 
-  /** Keep accessories the new vehicle also supports (a roof box stays on when switching). */
+  /** Keep the color and accessories the new vehicle also supports (red stays red when switching). */
   private carryOver(next: VehicleChoice): VehicleChoice {
     const v = this.cat.vehicle(next.vehicleId);
     next.accessoryIds = this.choice.accessoryIds.filter((a) => v.accessories.includes(a));
+    if (this.paintChosen && v.paints.some((p) => p.id === this.choice.paintId)) next.paintId = this.choice.paintId;
     return next;
+  }
+
+  /** True once the child picked a color (until then each model shows its factory color). */
+  private paintChosen = false;
+
+  /** Paint the current vehicle (e.g. from a paint can). Returns false if it doesn't offer that color. */
+  setPaint(paintId: string): boolean {
+    if (!this.vehicle.paints.some((p) => p.id === paintId)) return false;
+    this.paintChosen = true;
+    if (this.choice.paintId === paintId) return false;
+    this.choice.paintId = paintId;
+    return true;
   }
 
   private toggleAccessory(id: string): void {

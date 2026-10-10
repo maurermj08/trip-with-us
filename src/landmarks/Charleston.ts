@@ -14,7 +14,7 @@ import { WORLD_END } from '../world/Route';
 const WALK = ROAD_FAR - 16;
 
 // ---------- Ravenel Bridge tower with cable fans ----------
-class BridgeTower extends Prop {
+export class BridgeTower extends Prop {
   private lights: Graphics[] = [];
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, 0);
@@ -58,7 +58,7 @@ class BridgeTower extends Prop {
 }
 
 // ---------- Rainbow Row house ----------
-class RowHouse extends Prop {
+export class RowHouse extends Prop {
   private shutters: Graphics[] = [];
   private panes: Graphics[] = [];
   private lit = false;
@@ -152,7 +152,7 @@ class RowHouse extends Prop {
 }
 
 // ---------- St. Michael's steeple ----------
-class Steeple extends Prop {
+export class Steeple extends Prop {
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, WALK - 4);
     this.layer = 'back';
@@ -184,7 +184,7 @@ class Steeple extends Prop {
 }
 
 // ---------- Palmetto (tap to rustle) ----------
-class Palm extends Prop {
+export class Palm extends Prop {
   private crown = new Container();
   constructor(ctx: Ctx, x: number, y: number, size: number, lean: number, front: boolean) {
     super(ctx, x, y);
@@ -205,7 +205,7 @@ class Palm extends Prop {
 }
 
 // ---------- Pineapple Fountain ----------
-class Fountain extends Prop {
+export class Fountain extends Prop {
   private t = 0;
   private boost = 0;
   private sculpture = new Container();
@@ -274,7 +274,7 @@ class Fountain extends Prop {
 }
 
 // ---------- End of the road: a grassy turnaround ----------
-class EndPark extends Prop {
+export class EndPark extends Prop {
   private flowers: Graphics[] = [];
   constructor(ctx: Ctx, x: number) {
     super(ctx, x, 30);

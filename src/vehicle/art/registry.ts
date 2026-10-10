@@ -1,6 +1,7 @@
 // Everything in art/, bundled by Vite. Definitions load eagerly (small JSON); SVG text loads
 // lazily so a garage with many cars only pays for what it shows.
-import type { AccessoryDef, BrandDef, VehicleDef, WheelDef } from './schema';
+import type { AccessoryDef, BrandDef, Paint, VehicleDef, WheelDef } from './schema';
+import { deltaE } from './color';
 
 const vehicleDefs = import.meta.glob<VehicleDef>('/art/vehicles/*/vehicle.json', { eager: true, import: 'default' });
 const vehicleSvgs = import.meta.glob<string>(['/art/vehicles/*/art.svg'], { query: '?raw', import: 'default' });
@@ -9,12 +10,27 @@ const wheelSvgs = import.meta.glob<string>(['/art/wheels/*.svg', '!/art/wheels/*
 const accessoryDefs = import.meta.glob<AccessoryDef[]>('/art/accessories/accessories.json', { eager: true, import: 'default' });
 const accessorySvgs = import.meta.glob<string>(['/art/accessories/*.svg', '!/art/accessories/*.generated.svg'], { query: '?raw', import: 'default' });
 const brandDefs = import.meta.glob<BrandDef>('/art/brands/*/brand.json', { eager: true, import: 'default' });
+const sharedPaintFiles = import.meta.glob<{ id: string; name: string; swatch: string }[]>('/art/paints.json', { eager: true, import: 'default' });
+
+/** Shared palette (art/paints.json): offered on every vehicle, recoloring the paint slot. */
+export const SHARED_PAINTS: Paint[] = Object.values(sharedPaintFiles).flat().map((p) => ({ ...p, slots: { paint: p.swatch } }));
+
+/** A vehicle's own factory paints first, then shared colors it doesn't already have (by id or look). */
+export function withSharedPaints(def: VehicleDef, shared: Paint[] = SHARED_PAINTS): VehicleDef {
+  const paints = [...def.paints];
+  for (const p of shared) {
+    if (paints.some((q) => q.id === p.id || deltaE(q.swatch, p.swatch) < 0.04)) continue;
+    paints.push(p);
+  }
+  return { ...def, paints };
+}
+
 const brandBadges = import.meta.glob<string>('/art/brands/*/badge.svg', { query: '?raw', import: 'default', eager: true });
 
 const byId = <T extends { id: string }>(list: T[]) => new Map(list.map((d) => [d.id, d]));
 
 export class ArtRegistry {
-  readonly vehicles = byId(Object.values(vehicleDefs).sort((a, b) => a.brand.localeCompare(b.brand) || a.year - b.year || a.model.localeCompare(b.model)));
+  readonly vehicles = byId(Object.values(vehicleDefs).map((d) => withSharedPaints(d)).sort((a, b) => a.brand.localeCompare(b.brand) || a.year - b.year || a.model.localeCompare(b.model)));
   readonly wheels = byId(Object.values(wheelDefs).flat());
   readonly accessories = byId(Object.values(accessoryDefs).flat());
   readonly brands = byId(Object.values(brandDefs).sort((a, b) => a.name.localeCompare(b.name)));

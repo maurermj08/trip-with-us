@@ -4,6 +4,7 @@ import { deltaE } from './color';
 import { bboxOf } from './geometry';
 import { measureArt, toDims } from './measure';
 import { colorsIn, tokenHexes } from './recolor';
+import { duplicatePartNames, listParts } from './parts';
 import { allLayerNames, findLayer, rootSvg, tagOf, walk, type DomImpl } from './svgDoc';
 import { REQUIRED_LAYERS, type Tokens, type VehicleDef } from './schema';
 
@@ -56,6 +57,8 @@ export function validateVehicle(svg: string, def: VehicleDef, dom: DomImpl): Rep
   for (const l of REQUIRED_LAYERS) if (!names.has(l)) r.errors.push(`missing layer "${l}"`);
   common(svg, doc, def.tokens, r);
   if (r.errors.length) return r;
+
+  for (const n of duplicatePartNames(listParts(doc))) r.warnings.push(`part name "${n}" is used more than once: give each part a unique layer name`);
 
   const m = measureArt(doc);
   for (const [i, w] of m.wheels.entries()) {

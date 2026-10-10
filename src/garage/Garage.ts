@@ -16,6 +16,7 @@ import { ThumbFactory } from './thumbs';
 import { drawRoom, drawStripes, lamp, paintCans, roomLayout, tireStack, tool, turntable, type RoomLayout } from './garageRoom';
 import { contactShadow } from '../style/shapes';
 import { P } from '../style/palette';
+import { SHARED_PAINTS } from '../vehicle/art/registry';
 
 export interface GarageServices {
   sfx: Sfx;
@@ -123,13 +124,15 @@ export class Garage extends Container {
       this.svc.tweens.wobble(tires, 0.06, 0.8, 0.15);
       this.svc.sfx.boing(0.8);
     } });
-    paintCans(5).forEach((can, i) => {
+    const hex = (h: string) => parseInt(h.replace('#', ''), 16);
+    paintCans(SHARED_PAINTS.map((p) => hex(p.swatch))).forEach((can, i) => {
       can.label = `can${i}`;
       this.decor.addChild(can);
       this.tappables.push({ c: can, tap: () => {
         this.svc.sfx.pluck(5 + i * 2, 0.16);
         const y0 = can.y;
-        this.svc.tweens.add(0.4, (p) => (can.y = y0 - Math.sin(p * Math.PI) * 24), { owner: can, done: () => (can.y = y0) });
+        this.svc.tweens.add(0.4, (p) => !can.destroyed && (can.y = y0 - Math.sin(p * Math.PI) * 24), { owner: can, done: () => !can.destroyed && (can.y = y0) });
+        this.paintWith(SHARED_PAINTS[i].id, hex(SHARED_PAINTS[i].swatch), can);
       } });
     });
     this.tappables.push({ c: this.lampParts.root, tap: () => {
@@ -187,7 +190,8 @@ export class Garage extends Container {
     if (drop && !sameModel) {
       // New model drops onto the turntable with a bounce.
       this.spinSpeed = 4;
-      this.svc.tweens.add(0.55, (p) => (v.y = -140 * (1 - p)), { ease: ease.outQuad, done: () => {
+      this.svc.tweens.add(0.55, (p) => !v.destroyed && (v.y = -140 * (1 - p)), { ease: ease.outQuad, done: () => {
+        if (v.destroyed) return;
         v.bounce(70);
         this.svc.sfx.thump(0.5);
       } });
@@ -220,6 +224,22 @@ export class Garage extends Container {
     }
   }
 
+  /** Paint can tapped: splash the color over to the car and repaint it. */
+  private paintWith(paintId: string, color: number, can: Container): void {
+    if (this.leaving) return;
+    const fx = this.svc.fx;
+    fx.emit(this, { x: can.x, y: can.y - 50, count: 10, shape: 'drop', tint: color, speed: [120, 300], angle: [-2.6, -0.6], gravity: 900, life: [0.4, 0.7], size: [8, 13], spin: 0, rotate: false });
+    if (!this.model.setPaint(paintId)) return;
+    this.svc.tweens.after(0.25, () => {
+      if (this.destroyed || !this.hero) return;
+      const h = this.hero;
+      fx.emit(this, { x: h.x, y: this.L.floorY - 60, count: 26, shape: 'drop', tint: [color, color, 0xffffff], speed: [160, 420], angle: [-2.9, -0.25], gravity: 900, life: [0.5, 0.9], size: [10, 18], spin: 0, rotate: false, spread: 120 });
+      this.svc.sfx.splash(1.1);
+      void this.showHero(this.model.choice);
+      this.shelf.setChips(this.model.chips(), this.model.choice, false);
+    });
+  }
+
   go(): void {
     if (this.leaving || !this.hero) return;
     this.leaving = true;
@@ -230,8 +250,8 @@ export class Garage extends Container {
     this.svc.tweens.after(0.6, () => sfx.honk(this.heroBuild?.def.sound?.hornPitch ?? 1));
     v.flashLights();
     const x0 = v.x, x1 = this.L.door.x + this.L.door.w + 400;
-    this.svc.tweens.add(1.6, (p) => (v.x = x0 + (x1 - x0) * p), { ease: ease.inQuad, delay: 0.5 });
-    this.svc.tweens.after(0.9, () => this.svc.onGo({ ...this.model.choice, accessoryIds: [...this.model.choice.accessoryIds] }));
+    this.svc.tweens.add(1.6, (p) => !v.destroyed && (v.x = x0 + (x1 - x0) * p), { ease: ease.inQuad, delay: 0.5 });
+    this.svc.tweens.after(0.9, () => !this.destroyed && this.svc.onGo({ ...this.model.choice, accessoryIds: [...this.model.choice.accessoryIds] }));
   }
 
   // ---------- input (garage owns the pointer while open) ----------
@@ -296,7 +316,7 @@ export class Garage extends Container {
         this.hero.bounce(-50);
       }
       const v = this.hero, from = v.x;
-      this.svc.tweens.add(0.3, (q) => (v.x = from + (this.L.heroX - from) * q), { ease: ease.outBack });
+      this.svc.tweens.add(0.3, (q) => !v.destroyed && (v.x = from + (this.L.heroX - from) * q), { ease: ease.outBack });
     }
   }
 

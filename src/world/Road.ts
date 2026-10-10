@@ -32,9 +32,9 @@ export function roadLayer(): ChunkLayer {
     for (let k = 0; k < xs.length - 1; k++) {
       const a = xs[k], b = xs[k + 1];
       if (underBridge(a)) {
-        g.rect(a, WATER_Y, b - a + 0.5, 700).fill(P.water);
+        g.rect(a, WATER_Y, b - a + 0.5, 4000).fill(P.water);
       } else {
-        g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, 800, a, 800]).fill(P.grassNear);
+        g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, 4000, a, 4000]).fill(P.grassNear);
       }
     }
     if (xs.some(underBridge)) {

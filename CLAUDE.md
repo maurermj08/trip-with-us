@@ -12,8 +12,7 @@ Casual, fail-free side-scrolling road-trip game for young kids. TypeScript + Vit
 npm run dev          # Vite dev server (LAN-exposed for iPad testing)
 npm test             # vitest: physics, route, art validation, recolor, garage model (tests/)
 npm run typecheck
-npm run build        # typecheck + production build (the Lab is dev-only, never in dist)
-npm run lab          # Vehicle Lab: preview art, reference-photo overlay, validator
+npm run build        # typecheck + production build: the game + the /dev sandbox
 npm run art:gen -- <vehicle-id> | --all | --library [--force]   # spec.json → art.svg (never clobbers hand edits)
 npm run art:check    # validate everything in art/
 npm run playtest -- out.png jump:26300 wait:1000 shot:a.png   # headless screenshots, see tools/playtest.mjs
@@ -22,7 +21,22 @@ npm run playtest -- out.png jump:26300 wait:1000 shot:a.png   # headless screens
 Verify visual work with `npm run playtest` against a running dev server (`I95_URL=http://localhost:<port>`), then look at the PNGs in `playtest/`. Headless WebGL runs below 20fps and the game clamps dt to 1/20s, so game time runs slow there: wait longer than you'd expect. `?debug=1` shows a position readout and jump buttons. `window.game` is exposed for scripting.
 
 - **Garage vs trip:** the game boots into the **Garage**. `?car=<vehicle-id>` skips it, and the playtest tool adds `car=mini-countryman-2019` by default. Use `I95_GARAGE=1` to start in the garage, with the steps `pick:<chip-key>` and `go`.
-- **Lab screenshots:** `I95_PAGE=lab.html I95_QUERY="car=<id>&true&ref&alpha=0.3&acc=roof-box"`.
+- **Sandbox screenshots:** `I95_PAGE=dev/ I95_HASH='<reference id>'`, or use the `open:<id>` step.
+
+### The /dev sandbox (owner's kitchen-sink viewer)
+
+Open it by going to the `/dev/` path: `http://localhost:5173/dev/` locally, and `…/trip-with-us/dev/` on the live site. There's no npm script for it, by the owner's choice.
+
+`dev/index.html` + `src/dev/` (`main.ts` UI shell, `Sandbox.ts` viewport, `catalog.ts` items, `ids.ts` reference IDs). It ships to Pages at `/dev/`.
+
+- **What it shows:** every vehicle, part, prop, sign, landmark (and its pieces), city piece, background region, road type, the sky, the garage, particles and sounds.
+- **How it behaves:** each item is shown alone, with the game's real classes, taps, test-car drive-through, and pan/zoom.
+- **Reference IDs:** the owner reports problems with these.
+  - **Object ID**, e.g. `vehicle/subaru-forester-2019`.
+  - **Config ID**: the object ID plus only the non-default settings, e.g. `vehicle/subaru-forester-2019?wheel=steelie&acc=bike-rack`.
+  - **Part ID** (vehicles): the config ID plus `part=<path>`, e.g. `…?acc=roof-box&part=body/mirror`. The path is the named-group path inside the SVG. Opening it highlights that part.
+  - To reproduce a report, open `/dev/#<id>` or paste the ID into "Go".
+- **Keep it complete.** When you add a vehicle, prop, sign, landmark, city piece or scenery region, add it to `buildCatalog()` in `src/dev/catalog.ts`. Give it a stable ID (`category/name[/piece]`) and expose its constructor options as fields. Never rename existing IDs; old reports reference them.
 
 ## Design rules that shape code
 
@@ -38,6 +52,8 @@ Verify visual work with `npm run playtest` against a running dev server (`I95_UR
   - Vehicles are squashed to 96% width and 107% height with wheels 12% oversize. They get a darker lower band, one gloss stripe, window glints, and **no faces**. People and animals may have faces.
     - The squash and oversize are applied at runtime (`STYLE` in `vehicle/art/schema.ts`), so vehicle art is drawn at true proportions.
     - The generator (`tools/art/vehicleSvg.ts`) bakes in the other vehicle rules.
+    - It names every part as a group inside `body` (`body/mirror`, `body/window-front`…). `vehicle/art/parts.ts` lists them.
+    - Part names must be unique per file, and must not end in `-<digit>` (stripped as an Illustrator duplicate suffix).
   - The far skyline is a single haze color with no detail. All the detail lives in the near layer.
 
 ## Architecture (`src/`)
@@ -50,7 +66,7 @@ Verify visual work with `npm run playtest` against a running dev server (`I95_UR
 | Vehicle art | `vehicle/art/`: `registry.ts` (`import.meta.glob` over `art/`), `svgDoc.ts` (layer lookup, Illustrator id normalizing, visibility split), `geometry.ts` (bboxes with transforms), `measure.ts` (anchors → `VehicleDims`), `recolor.ts` + `color.ts` (token swap, OKLCH shades), `rasterize.ts` (SVG → canvas → texture), `VehicleBuild.ts`, `validate.ts` | Pure modules are DOM-agnostic: tests and tools pass `xmlDom` (`tools/art/dom.ts`). |
 | Garage | `garage/Garage.ts` (scene and pointer handling), `GarageModel.ts` (pure brand → model → customize state, unit-tested), `Shelf.ts` (momentum chip row), `thumbs.ts` (lazy chip pictures), `garageRoom.ts` (room art) | `Game.mode` is `'garage'` or `'trip'`. In garage mode the trip `Input` is disabled and the garage owns the pointer. |
 | Art tools | `tools/art/`: `generate.ts`, `vehicleSvg.ts` (spec → SVG with style rules), `library.ts` (wheels, accessories), `protect.ts` (hash manifest guards hand edits), `validate.ts`, `library-fs.ts` | Run with `tsx`. |
-| Lab | `lab.html` + `src/lab/main.ts` | Dev only. Reference photos come from git-ignored `reference/`. |
+| Dev sandbox | `dev/index.html` + `src/dev/` | Vehicle items include the old Lab tools: reference overlay (local only, from git-ignored `reference/`), anchors, recolor test, validation. |
 | World | `world/Route.ts` (pure data: route skeleton, zones, regions), `Terrain.ts`, `Road.ts`, `Scenery.ts` (parallax chunk generators), `Sky.ts`, `ChunkLayer.ts`, `PropFactory.ts` | |
 | Things | `props/` (road and farm props, `Prop` base), `signs/Signs.ts`, `landmarks/` (Home, Duckies, Charleston incl. the Ravenel Bridge and greeters) | |
 | Story | `trip/TripDirector.ts` | Garage → Leave → Travel → Arrive → Greet → iris back to the garage (`endTrip`) with the same pick. Nothing persists beyond the page session. |
@@ -73,7 +89,11 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
 
 - **Roadside set piece:** add a `PlacementKind` and a placement in `Route.ts`, write a `Prop` subclass (`hits`, `onTap`, optional `onBump` and `update`), and add a case in `world/PropFactory.ts`.
 - **Landmark:** write a `build<Name>(ctx, x0)` that returns `Prop[]` positioned relative to `x0` (see `buildDuckies`). Add a zone in `Route.ts` if it needs open road with no barrier (`isOpenRoad`), and wire it into `Game.buildTrip`.
+- **Anything new:** also add it to the /dev catalog (see above).
 - **Sound:** add a method to `Sfx` built from `Synth.tone` / `Synth.noise`. Keep sounds soft, because the master bus is compressed.
+- **Colors:** `art/paints.json` is the shared palette.
+  - Every vehicle gets it after its factory paints (`withSharedPaints` in `registry.ts`).
+  - The garage shelf has one paint can per shared color; tapping it calls `GarageModel.setPaint`.
 - **Vehicle:** follow `art/README.md` → "Adding a new car".
   - Physics must stay shared (pillar 3). Flavor is only `vehicle.json` → `sound` and the art.
   - `tests/art.test.ts` enforces the size band and validates everything in `art/`.

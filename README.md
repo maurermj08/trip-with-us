@@ -32,7 +32,9 @@ The build uses relative asset paths (`base: './'`), so it works at `https://<use
 
 The game opens in a **garage**: pick a brand, then a model, then wheels and accessories, and drive out the door. Vehicles are SVG art in `art/` that you can finish in Adobe Illustrator.
 
-- `npm run lab` opens the **Vehicle Lab**, a live preview with a reference-photo overlay.
+- Go to the **`/dev/`** path (live: `…/trip-with-us/dev/`; locally: `http://localhost:5173/dev/`) for the **sandbox**.
+  - It shows every vehicle, prop, sign, landmark, city piece, background, effect and sound on its own.
+  - You can interact with each item, zoom, and copy **reference IDs** for bug reports.
 - `art/README.md` is the full guide: layers, colors, Illustrator settings, and adding a car.
 
 ## Controls (both work at once)

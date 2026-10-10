@@ -103,18 +103,20 @@ export function tireStack(): Container {
   return c;
 }
 
-/** Shelf of paint cans (tap a can: it hops and plays a note). */
-export function paintCans(n: number): Container[] {
-  const colors = [0xe94b3c, 0xf7c934, 0x2f80d1, 0x4caf50, 0xc5a3ff, 0xf28b82];
+/** Shelf of paint cans, one per color (tap a can: the car gets painted that color). */
+export function paintCans(colors: number[]): Container[] {
   const out: Container[] = [];
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < colors.length; i++) {
     const c = new Container();
     const g = new Graphics();
-    const col = colors[i % colors.length];
+    const col = colors[i];
     g.roundRect(-16, -40, 32, 40, 6).fill(0xd9dde2);
     g.roundRect(-16, -30, 32, 20, 3).fill(col);
     g.roundRect(-18, -44, 36, 7, 3).fill(darken(0xd9dde2, 0.15));
     g.roundRect(-12, -52, 24, 4, 2).fill({ color: lighten(col, 0.2), alpha: 0.9 });
+    // a drip of paint down the side so light colors still read on the grey can
+    g.roundRect(-10, -44, 7, 18, 3.5).fill(col);
+    g.roundRect(-16, -30, 32, 20, 3).fill({ color: darken(col, 0.25), alpha: 0.15 });
     g.rect(16 - 32 * 0.28, -40, 32 * 0.28, 40).fill({ color: P.black, alpha: 0.07 });
     c.addChild(g);
     out.push(c);

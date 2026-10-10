@@ -11,14 +11,16 @@ We work through the phases one at a time: plan, build, play-test, polish. Every 
 - Idle hints, synthesized audio, 13 unit tests.
 - Not yet verified on a real iPad: feel, frame rate and audio mix.
 
-**Phase 1: done (2026-10-10).** Vehicle art pipeline, Vehicle Lab, garage chooser. Details below.
+**Phase 1: done (2026-10-10).** Vehicle art pipeline, Vehicle Lab (now part of /dev), garage chooser. Details below.
 
 ## Phase 1: Car chooser, design and styles: done (2026-10-10)
 
 What shipped:
 - **Vehicle art pipeline:** SVG art in `art/`, round-trippable through Illustrator. The browser rasterizes each layer, so the game shows exactly what Illustrator saved.
 - **Data model:** tokens per color slot, OKLCH recoloring, paints, a wheel library, and accessories (roof box, bike rack, black pack). There is a validator, plus a generator (`spec.json` → `art.svg`) that won't overwrite hand edits.
-- **Vehicle Lab** (`npm run lab`): live preview, reference-photo overlay aligned on the wheels, anchors, a recolor test, and validator output.
+- **/dev sandbox** (added after Phase 1):
+  - It covers every item in the game with interactions, zoom, and copyable Object and Config reference IDs.
+  - It includes the vehicle tools: reference-photo overlay, anchors, recolor test, validation.
 - **Vehicles:** the 2019 MINI Countryman (Island Blue) and the 2019 Subaru Forester (Ice Silver). `MiniView` is replaced by the generic `VehicleView`, and every per-car number now comes from `dims`.
 - **Garage scene:** brand → model → wheels and accessories on a momentum shelf. There's a turntable hero car, a drive-out-the-door start, and the iris back to the garage after the greeting. Captions appear in the garage only.
 
