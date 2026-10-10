@@ -13,6 +13,8 @@ We work through the phases one at a time: plan, build, play-test, polish. Every 
 
 **Phase 1: done (2026-10-10).** Vehicle art pipeline, Vehicle Lab (now part of /dev), garage chooser. Details below.
 
+**Phase 3: built (2026-10-10).** Four cities, four bridges, two airports, mile markers 100→1. The owner still needs to play-test it.
+
 ## Phase 1: Car chooser, design and styles: done (2026-10-10)
 
 What shipped:
@@ -51,20 +53,49 @@ Open questions:
 - Near-shoulder signs and palms cross in front of the car. That's intentional diorama depth, but check that it reads well.
 - The billboard tagline text is small.
 
-## Phase 3: Cities and towns
+## Phase 3: Cities and towns: built (2026-10-10, awaiting owner play-test)
 
-**Goal:** more destinations (pillar 3: the destination is a choice that changes flavor), plus towns to pass through.
+The trip now runs **Home → Charleston → Savannah → Jacksonville → Orlando**, about 9–10 minutes. The family greeting, dusk, fireworks and the restart button happen only after Orlando. The other three cities are drive-through.
 
-**Code seams:**
-- Charleston is hard-wired:
-  - `landmarks/Charleston.ts` uses absolute x values.
-  - `Route.ts` constants (`ARRIVE_X`, `GREET_X`, `GOLDEN_HOUR`, `ZONES.charleston`, the `BRIDGE`, region `'charleston'`) all describe one destination.
-- Refactor toward a trip config: `{ destination, route length, regions, arrival builder }`. Make Charleston one destination built at `x0` like `buildDuckies(ctx, x0)`.
-- Reusable city parts already exist and could move to a city kit:
-  - `RowHouse`, `Steeple`, `Palm`, `Fountain`, `EndPark`
-  - `Greeters` (the family), `launchFirework()`
-- The Ravenel Bridge is part of the terrain (`Terrain.roadHeight`) as well as a landmark (`buildBridge`). Other cities may want their own bridges or none.
-- The `TripDirector` takes `suitcase` and `greeters`. Keep greet generic so every destination gets a family welcome.
+**What shipped:**
+- **Data-driven trip** in `src/world/trip/` (pure data); `world/Route.ts` stays the facade.
+  - `cities.ts`: `BRIDGES`, `CITIES`, `AIRPORTS`, `CITY_LAYOUT` and the zones.
+  - `legs.ts`: mile markers 100→1, laid out evenly around keep-out zones, plus ramps and every placement.
+  - `regions.ts`: regions, the skyline style for each x, and `timeOfDay()` (morning → day → golden hour).
+- **City kit** in `landmarks/kit/`:
+  - buildings, trees, oaks, towers, fountains, riverfront, planes;
+  - arrival: `buildArrival`, greeters, the end park (with a Florida variant).
+- **City builders** (`landmarks/cities.ts`, `CITY_BUILDERS`): each `build<City>(ctx, x0)` places its props relative to `x0`.
+- **Bridges** in `landmarks/bridges/`:
+  - the Ravenel and Talmadge (cable-stayed, `PylonStyle`);
+  - the Main Street lift bridge (the span lifts on tap);
+  - the I-4 flyover (crosses ground, not water, with an upper ramp and a DOWNTOWN sign).
+- **Cities:**
+  - **Savannah:** River Street warehouses, a candy shop, City Hall dome, the cathedral, Forsyth fountain, live oaks and gas lamps, a riverboat, the Waving Girl.
+  - **Jacksonville:** towers (crown, slab, granite), Friendship Fountain, Treaty Oak, pelicans, a tug and barge.
+  - **Orlando:** glass towers, Lake Eola (pagoda fountain light shows, swan boats, swans, bandshell), an observation wheel, and the Florida house with a flamingo, where the family comes out.
+- **Two airports** (`landmarks/Airport.ts`), one small regional and one large:
+  - departing planes and, at the large one, landings;
+  - a control tower and a hangar with a prop plane;
+  - a windsock, a fuel truck and a baggage train;
+  - parody liveries only.
+- **Signs:**
+  - `GuideSign({city, exit, shield})` with I-26, US 17, I-10 and I-4 shields and an airport icon;
+  - `WelcomeSign(state)` for SC, GA and FL;
+  - `InterstateShield(route)`;
+  - billboard designs: Duckies, Peaches & Pecans, Free OJ, Chomp Land, and a Potato World teaser.
+- **Florida props:** orange trees, orange crates, a gator pond, and the OJ stand at the Welcome Center.
+- **Scenery:** new regions:
+  - port, savannah, gaCoast, river, jacksonville, flatwoods, citrus, pasture, lakes, airport, floridaSuburb, orlando.
+  
+  The skyline now picks its style per building, which fixes the haze city over farmland.
+- **Sky:** a morning gradient at Home, and golden hour from the big airport onward.
+- **/dev:** every new piece is listed under `city/savannah/*`, `city/jacksonville/*`, `city/orlando/*`, `landmark/airport/*`, the bridge IDs, the new signs and the Florida props. The debug jump buttons are generated from the trip data.
+
+**Not done / next:**
+- **iPad check:** test performance on the iPad (about 4× more props). If trip start-up is slow, add `PropStream` (build props near the camera).
+- **Potato World:** the Phase 4 Disney parody has no reserved stretch of road in Orlando yet. Only the teaser billboard exists, at 282.5k.
+- **Region seams:** the far layer switches abruptly where water and land regions meet, for example at the regional airport.
 
 ## Phase 4: Landmarks (Duckies, Potato World, Over the Line)
 

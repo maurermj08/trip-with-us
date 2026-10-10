@@ -1,6 +1,8 @@
 export const P = {
   skyTop: 0x5fb0ef,
   skyBottom: 0xd4f0fd,
+  mornTop: 0x8cc4ef,
+  mornBottom: 0xfde7d6,
   goldTop: 0x7a9ee0,
   goldBottom: 0xffd9a8,
   duskTop: 0x3c3f86,

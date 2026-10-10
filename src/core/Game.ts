@@ -17,7 +17,7 @@ import { buildVehicle, pixelsPerUnit, type VehicleBuild } from '../vehicle/art/V
 import type { VehicleChoice } from '../vehicle/art/schema';
 import { art } from '../vehicle/art/registry';
 import { surfaceAt } from '../world/Terrain';
-import { CAR_START_X, GOLDEN_HOUR, ROUTE, WORLD_END, WORLD_START } from '../world/Route';
+import { AIRPORTS, BRIDGES, CAR_START_X, CITIES, FINAL_CITY, ROUTE, WORLD_END, WORLD_START, timeOfDay } from '../world/Route';
 import type { ChunkLayer } from '../world/ChunkLayer';
 import { cloudLayer, farLayer, foregroundLayer, nearLayer, skylineLayer } from '../world/Scenery';
 import { roadLayer } from '../world/Road';
@@ -26,9 +26,13 @@ import { createProp } from '../world/PropFactory';
 import type { Prop } from '../props/Prop';
 import { buildHome } from '../landmarks/Home';
 import { buildDuckies } from '../landmarks/Duckies';
-import { buildBridge, buildCharleston } from '../landmarks/Charleston';
+import { buildBridge } from '../landmarks/bridges';
+import { CITY_BUILDERS } from '../landmarks/cities';
+import { buildAirport } from '../landmarks/Airport';
+import { buildArrival } from '../landmarks/kit/arrival';
 import { TripDirector } from '../trip/TripDirector';
 import { Garage } from '../garage/Garage';
+import { RestartButton } from '../trip/RestartButton';
 import { P } from '../style/palette';
 
 export class Game implements InputHost {
@@ -65,6 +69,8 @@ export class Game implements InputHost {
   readonly cam = new Camera();
   private hinter = new IdleHinter(this.tweens, this.sfx);
   private iris = new Iris(this.tweens, this.sfx);
+  /** Temporary end-of-trip restart (back to the garage). */
+  private restart = new RestartButton(this.tweens);
   private input: Input;
 
   car!: CarController;
@@ -91,9 +97,10 @@ export class Game implements InputHost {
     const L = this.layers;
     // The road chunks contain the median barrier, so things that stand "behind" it
     // (cows, Duckies, Rainbow Row) are under the road but over the near scenery.
+    L.back.sortableChildren = true;
     this.world.addChild(L.skyFx, L.back, L.fxBack, this.road, L.roadDecor, L.mid, L.shadow, L.car, L.front, L.fx);
     this.scene.addChild(this.clouds, this.skyline, this.far, this.near, this.world, this.foreground);
-    this.root.addChild(this.sky, this.scene, this.screenFx, this.hinter.goHint, this.iris);
+    this.root.addChild(this.sky, this.scene, this.screenFx, this.hinter.goHint, this.restart, this.iris);
 
     this.input = new Input(app.canvas, this);
     // The garage owns the pointer while it's open.
@@ -174,6 +181,7 @@ export class Game implements InputHost {
 
   private setMode(mode: 'garage' | 'trip'): void {
     this.mode = mode;
+    this.restart.setShown(false);
     const trip = mode === 'trip';
     this.scene.visible = trip;
     this.sky.visible = trip;
@@ -204,13 +212,17 @@ export class Game implements InputHost {
     };
 
     const home = buildHome(ctx);
-    const charleston = buildCharleston(ctx);
+    const cities = CITIES.map((c) => ({ spec: c, set: CITY_BUILDERS[c.id](ctx, c.x0) }));
+    const final = cities.find((c) => c.spec === FINAL_CITY)!;
+    const arrival = buildArrival(ctx, FINAL_CITY, final.set.doorX);
     this.props = [
       ...ROUTE.map((p) => createProp(ctx, p)),
       ...home.props,
       ...buildDuckies(ctx),
-      ...buildBridge(ctx),
-      ...charleston.props,
+      ...BRIDGES.flatMap((b) => buildBridge(ctx, b)),
+      ...cities.flatMap((c) => c.set.props),
+      ...AIRPORTS.flatMap((a) => buildAirport(ctx, a)),
+      ...arrival.props,
     ];
     for (const p of this.props) L[p.layer].addChild(p.view);
 
@@ -219,7 +231,7 @@ export class Game implements InputHost {
       endTrip: () => this.endTrip(),
       setDusk: (t) => (this.dusk = t),
       showGoHint: () => this.hinter.showGoHint(),
-    }, home.suitcase, charleston.greeters);
+    }, home.suitcase, arrival.greeters);
 
     this.engine.setRunning(false);
     this.dusk = 0;
@@ -253,6 +265,7 @@ export class Game implements InputHost {
     this.cam.resize(window.innerWidth, window.innerHeight);
     this.root.scale.set(this.cam.scale);
     this.sky.resize(this.cam.viewW, this.cam.viewH, this.cam.anchorY);
+    this.restart.layout(this.cam.viewW);
     this.garage?.layout();
   }
 
@@ -272,6 +285,16 @@ export class Game implements InputHost {
   }
   carPos() {
     return { x: this.car.x, alt: this.car.alt };
+  }
+
+  tapUi(sx: number, sy: number): boolean {
+    if (this.busy || !this.restart.hit(sx, sy)) return false;
+    this.synth.unlock();
+    this.sfx.pop();
+    this.restart.press();
+    this.restart.setShown(false);
+    this.endTrip();
+    return true;
   }
 
   hitCar(wx: number, wy: number): boolean {
@@ -349,9 +372,11 @@ export class Game implements InputHost {
     this.tweens.update(dt);
     this.fx.update(dt);
 
-    const gold = Math.max(0, Math.min(1, (car.x - GOLDEN_HOUR.start) / GOLDEN_HOUR.len));
-    this.scene.tint = this.sky.update(gold, this.dusk);
+    const tod = timeOfDay(car.x);
+    this.scene.tint = this.sky.update(tod.morning, tod.gold, this.dusk);
     this.hinter.update(dt, !this.input.touching && !this.busy, () => this.director.hintTargets(), this.cam.viewW, this.cam.anchorY);
+    this.restart.setShown(this.director.phase === 'greet' && !this.busy);
+    this.restart.update(dt);
     const c = this.irisAt();
     this.iris.draw(this.cam.viewW, this.cam.viewH, c.x, c.y);
 

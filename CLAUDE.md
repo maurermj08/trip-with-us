@@ -67,8 +67,8 @@ Open it by going to the `/dev/` path: `http://localhost:5173/dev/` locally, and 
 | Garage | `garage/Garage.ts` (scene and pointer handling), `GarageModel.ts` (pure brand → model → customize state, unit-tested), `Shelf.ts` (momentum chip row), `thumbs.ts` (lazy chip pictures), `garageRoom.ts` (room art) | `Game.mode` is `'garage'` or `'trip'`. In garage mode the trip `Input` is disabled and the garage owns the pointer. |
 | Art tools | `tools/art/`: `generate.ts`, `vehicleSvg.ts` (spec → SVG with style rules), `library.ts` (wheels, accessories), `protect.ts` (hash manifest guards hand edits), `validate.ts`, `library-fs.ts` | Run with `tsx`. |
 | Dev sandbox | `dev/index.html` + `src/dev/` | Vehicle items include the old Lab tools: reference overlay (local only, from git-ignored `reference/`), anchors, recolor test, validation. |
-| World | `world/Route.ts` (pure data: route skeleton, zones, regions), `Terrain.ts`, `Road.ts`, `Scenery.ts` (parallax chunk generators), `Sky.ts`, `ChunkLayer.ts`, `PropFactory.ts` | |
-| Things | `props/` (road and farm props, `Prop` base), `signs/Signs.ts`, `landmarks/` (Home, Duckies, Charleston incl. the Ravenel Bridge and greeters) | |
+| World | `world/trip/` (pure trip data: `cities.ts` bridges/cities/airports/zones, `legs.ts` markers/ramps/placements, `regions.ts` regions/skyline/time of day), `world/Route.ts` (facade + zone helpers), `Terrain.ts`, `Road.ts`, `Scenery.ts` (parallax chunk generators), `Sky.ts`, `ChunkLayer.ts`, `PropFactory.ts` | |
+| Things | `props/` (road, farm and Florida props, `Prop` base), `signs/Signs.ts` (parameterized), `landmarks/` (Home, Duckies, `Charleston`/`Savannah`/`Jacksonville`/`Orlando`, `Airport`), `landmarks/kit/` (shared city parts + `arrival.ts`), `landmarks/bridges/` (one builder per `BridgeSpec`), `landmarks/cities.ts` (`CITY_BUILDERS`) | |
 | Story | `trip/TripDirector.ts` | Garage → Leave → Travel → Arrive → Greet → iris back to the garage (`endTrip`) with the same pick. Nothing persists beyond the page session. |
 | Audio | `audio/Synth.ts` (primitives), `Sfx.ts` (named sounds), `Engine.ts` (continuous hum and wind) | |
 | FX | `fx/Particles.ts` (pooled sprites, fireworks), `fx/Iris.ts` | |
@@ -88,7 +88,8 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
 ### Adding things
 
 - **Roadside set piece:** add a `PlacementKind` and a placement in `Route.ts`, write a `Prop` subclass (`hits`, `onTap`, optional `onBump` and `update`), and add a case in `world/PropFactory.ts`.
-- **Landmark:** write a `build<Name>(ctx, x0)` that returns `Prop[]` positioned relative to `x0` (see `buildDuckies`). Add a zone in `Route.ts` if it needs open road with no barrier (`isOpenRoad`), and wire it into `Game.buildTrip`.
+- **Landmark:** write a `build<Name>(ctx, x0)` that returns `Prop[]` positioned relative to `x0` (see `buildDuckies`). Add a zone in `world/trip/cities.ts` if it needs open road with no barrier (`isOpenRoad`), and wire it into `Game.buildTrip`.
+- **City:** add a `CitySpec` + its `BridgeSpec` in `world/trip/cities.ts`, a `build<City>(ctx, x0): CitySet` (see `Charleston.ts`), and register it in `landmarks/cities.ts`. The city flagged `final` gets the arrival (family, end park); the others are drive-through.
 - **Anything new:** also add it to the /dev catalog (see above).
 - **Sound:** add a method to `Sfx` built from `Synth.tone` / `Synth.noise`. Keep sounds soft, because the master bus is compressed.
 - **Colors:** `art/paints.json` is the shared palette.
@@ -97,7 +98,7 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
 - **Vehicle:** follow `art/README.md` → "Adding a new car".
   - Physics must stay shared (pillar 3). Flavor is only `vehicle.json` → `sound` and the art.
   - `tests/art.test.ts` enforces the size band and validates everything in `art/`.
-- `tests/Route.test.ts` guards route invariants (markers count down 10→1, ramps clear of markers and the bridge, and so on). Extend it when you add placement rules.
+- `tests/Route.test.ts` guards trip invariants (markers count down 100→1 outside every zone, ramps clear of markers and zones, cities in order after their bridges, signs in the right legs, sky keys). Extend it when you add placement rules.
 
 ## Gotchas
 
@@ -108,7 +109,7 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
   - Pipeline canvases are created with `willReadFrequently` (CPU-backed).
 - `Tweens` drops a tween or timer that throws, so one destroyed target can't freeze the game. Still guard `destroyed` in tweens on short-lived objects (chips, garage).
 - `Tweens.wobble` saves the base rotation and scale and restores them when it finishes. Don't run your own tween on the same object's rotation or scale at the same time.
-- Game positions in landmarks are still partly absolute: Charleston uses fixed x values tied to `GREET_X` and `WORLD_END`. See the roadmap for cities.
+- Landmark positions are relative to their city's `x0`. The arrival (greeters at `x0 + CITY_LAYOUT.greeters`, end park at `WORLD_END`) comes from the final city.
 - Audio only starts after a user gesture (`synth.unlock()` runs on every input).
 - Deployment: every push to `main` builds and deploys to GitHub Pages (`.github/workflows/deploy.yml`, tests must pass). `vite.config.ts` uses `base: './'`, so keep every asset URL relative (no leading `/`).
 - The repo is **public**: no secrets, personal data or copyrighted reference images. Reference photos live in git-ignored `reference/`, and `*.jpg` / `*.jpeg` are ignored everywhere.

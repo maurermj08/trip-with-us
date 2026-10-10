@@ -21,7 +21,16 @@ import { Billboard, GuideSign, InterstateShield, MileMarker, WelcomeSign } from 
 import { BigTree, House, Mailbox, Suitcase, buildHome } from '../landmarks/Home';
 import { Canopy, DuckStatue, PylonSign, Pump, Store, buildDuckies } from '../landmarks/Duckies';
 import { BridgeTower, EndPark, Fountain, Greeters, Palm, RowHouse, Steeple, buildBridge, buildCharleston, launchFirework } from '../landmarks/Charleston';
-import { BRIDGE, RAMPS, WORLD_END, ZONES, mileMarkerX, regionAt, type Region } from '../world/Route';
+import { AIRPORTS, BRIDGE, BRIDGES, CITIES, FINAL_CITY, RAMPS, REGIONS, ROUTE, WORLD_END, ZONES, mileMarkerX, regionAt, type BillboardDesign, type Placement, type Region } from '../world/Route';
+import { Gator, OjStand, OrangeCrate, OrangeTree } from '../props/FloridaProps';
+import { Bandshell, Flamingo, FloridaHouse, LakeEola, ObservationWheel, Swan, SwanBoat, buildOrlando } from '../landmarks/Orlando';
+import { buildArrival } from '../landmarks/kit/arrival';
+import { Airfield, ApproachLights, BaggageTrain, ControlTower, FuelTruck, Hangar, Radar, Terminal, Windsock, buildAirport } from '../landmarks/Airport';
+import { FriendshipFountain, MidRise, TreatyOak, buildJacksonville } from '../landmarks/Jacksonville';
+import { Tower, type TowerVariant } from '../landmarks/kit/towers';
+import { Pelicans, RiverBand as JaxRiver, TallPalm, Tugboat } from '../landmarks/kit/riverfront';
+import { BRICKS, Cathedral, CityHall, ForsythFountain, GasLamp, LiveOak, RiverBand, Riverboat, WavingGirl, Warehouse, buildSavannah } from '../landmarks/Savannah';
+import { TALMADGE } from '../landmarks/bridges/CableStayed';
 import { P } from '../style/palette';
 import { Garage } from '../garage/Garage';
 import { Camera } from '../core/Camera';
@@ -407,13 +416,25 @@ function groupItem(id: string, category: string, label: string, make: (env: DevE
   };
 }
 
+const OX = FINAL_CITY.x0;
+const JX = CITIES.find((c) => c.id === 'jacksonville')!.x0;
+const SAV = CITIES.find((c) => c.id === 'savannah')!.x0;
+
+const BRIDGE_DEV_IDS: Record<string, string> = { talmadge: 'talmadge-bridge', 'main-street': 'main-street-bridge', 'i4-flyover': 'i4-flyover' };
+const BRIDGE_DEV_LABELS: Record<string, string> = { talmadge: 'Talmadge Bridge (Savannah)', 'main-street': 'Main Street lift bridge (Jacksonville)', 'i4-flyover': 'I-4 flyover (Orlando)' };
+
 const ROW_COLORS: [string, string][] = P.rainbow.map((_, i) => [String(i), `Pastel ${i + 1}`]);
 
 // ---------- backgrounds ----------
 
-const REGION_X: Record<Region, number> = {
-  suburb: 2400, pines: 6000, farm: 12500, town: 20000, duckies: 26000, lowcountry: 60000, marsh: 71000, harbor: 78000, charleston: 83000,
-};
+// The leg 1 regions keep their hand-picked spots; the rest use the middle of their first stretch.
+const REGION_X: Record<Region, number> = (() => {
+  const out = {} as Record<Region, number>;
+  REGIONS.forEach(([x, r], i) => {
+    if (out[r] === undefined) out[r] = Math.round((x + (REGIONS[i + 1]?.[0] ?? x + 5000)) / 2);
+  });
+  return { ...out, suburb: 2400, pines: 6000, farm: 12500, town: 20000, duckies: 26000, lowcountry: 60000, marsh: 71000, harbor: 78000, charleston: 83000 };
+})();
 
 function regionItem(region: Region): DevItem {
   return {
@@ -449,13 +470,13 @@ function roadItem(id: string, label: string, x: number): DevItem {
 }
 
 const skyItem: DevItem = {
-  id: 'background/sky', category: 'Backgrounds', label: 'Sky (day → golden → dusk)', context: 'scene',
-  fields: [range('gold', 'Golden hour', 0, 1, 0.05, 0, true), range('dusk', 'Dusk', 0, 1, 0.05, 0, true), range('x', 'World x', 0, 86000, 500, 82000)],
+  id: 'background/sky', category: 'Backgrounds', label: 'Sky (morning → day → golden → dusk)', context: 'scene',
+  fields: [range('gold', 'Golden hour', 0, 1, 0.05, 0, true), range('dusk', 'Dusk', 0, 1, 0.05, 0, true), range('x', 'World x', 0, 86000, 500, 82000), range('morning', 'Morning', 0, 1, 0.05, 0, true)],
   build: (env, cfg) => {
     const x = Number(cfg.x);
     return {
       focus: { x: x - 700, y: -700, w: 1400, h: 900 },
-      update: (_dt, c) => env.setSky(Number(c.gold), Number(c.dusk)),
+      update: (_dt, c) => env.setSky(Number(c.gold), Number(c.dusk), Number(c.morning ?? 0)),
       actions: [{ label: 'Launch firework', run: () => launchFirework(env.ctx, x + (Math.random() - 0.5) * 600, -400 - Math.random() * 200) }],
     };
   },
@@ -569,12 +590,30 @@ export function buildCatalog(): DevItem[] {
     propItem('animal/birds', 'Farm & animals', 'Birds on a fence', (env) => [new Fence(env.ctx, 12300, 900), new Birds(env.ctx, 12700)]),
     propItem('prop/fence', 'Farm & animals', 'Field fence', (env, c) => [new Fence(env.ctx, 10600, Number(c.len))], { fields: [range('len', 'Length', 200, 3000, 50, 900)] }),
     propItem('sign/mile-marker', 'Signs', 'Mile marker', (env, c) => [new MileMarker(env.ctx, mileMarkerX(Number(c.n)), Number(c.n))], {
-      fields: [sel('n', 'Number', Array.from({ length: 10 }, (_, i) => [String(10 - i), String(10 - i)] as [string, string]), '7')],
+      fields: [range('n', 'Number', 1, 100, 1, 7)],
     }),
-    propItem('sign/interstate-shield', 'Signs', 'Interstate 95 shield', (env) => [new InterstateShield(env.ctx, 2500)]),
-    propItem('sign/guide', 'Signs', 'Green guide sign (Charleston)', (env) => [new GuideSign(env.ctx, 64200)]),
+    propItem('sign/interstate-shield', 'Signs', 'Interstate shield', (env, c) => [new InterstateShield(env.ctx, 2500, String(c.route))], {
+      fields: [sel('route', 'Route', [['95', 'I-95'], ['4', 'I-4'], ['10', 'I-10'], ['26', 'I-26']], '95')],
+    }),
+    propItem('sign/guide', 'Signs', 'Green guide sign', (env, c) => {
+      const city = String(c.city) as NonNullable<Placement['city']>;
+      const p = ROUTE.find((q) => q.kind === 'guide' && q.city === city)!;
+      return [new GuideSign(env.ctx, 64200, { city, exit: p.exit, shield: p.shield })];
+    }, {
+      fields: [sel('city', 'Destination', [['charleston', 'Charleston (I-26)'], ['savannah', 'Savannah (US 17)'], ['jacksonville', 'Jacksonville (I-10)'], ['orlando', 'Orlando (I-4)'], ['downtown-orlando', 'Downtown Orlando'], ['airport', 'Airport']], 'charleston')],
+    }),
     propItem('sign/duckies-billboard', 'Signs', 'Duckies billboard', (env) => [new Billboard(env.ctx, 17600)]),
+    propItem('sign/billboard', 'Signs', 'Billboard (all designs)', (env, c) => [new Billboard(env.ctx, 17600, String(c.design) as BillboardDesign)], {
+      fields: [sel('design', 'Design', [['duckies', 'Duckies'], ['peaches', 'Peaches & Pecans'], ['oj', 'Free OJ'], ['chomp', 'Chomp Land'], ['potato', 'Potato World teaser']], 'peaches')],
+    }),
     propItem('sign/welcome-sc', 'Signs', 'Welcome to South Carolina', (env) => [new WelcomeSign(env.ctx, 56400)]),
+    propItem('sign/welcome-ga', 'Signs', 'Welcome to Georgia', (env) => [new WelcomeSign(env.ctx, 56400, 'GA')]),
+    propItem('sign/welcome-fl', 'Signs', 'Welcome to Florida', (env) => [new WelcomeSign(env.ctx, 56400, 'FL')]),
+    propItem('prop/orange-tree', 'Florida', 'Orange tree (tap: oranges drop)', (env, c) => [new OrangeTree(env.ctx, 264000, Number(c.size))], { context: 'scene', fields: [range('size', 'Size', 80, 200, 10, 130)] }),
+    propItem('prop/citrus-grove', 'Florida', 'Citrus grove (fence + trees)', (env) => [new Fence(env.ctx, 262600, 3000), ...[263000, 263750, 264500, 265250].map((x) => new OrangeTree(env.ctx, x))], { context: 'scene' }),
+    propItem('prop/orange-crate', 'Florida', 'Orange crates (drive through)', (env, c) => [new OrangeCrate(env.ctx, 257500, Number(c.n))], { fields: [sel('n', 'Crates', [['2', '2'], ['3', '3'], ['4', '4']], '3')] }),
+    propItem('animal/gator', 'Florida', 'Friendly gator in a pond', (env) => [new Gator(env.ctx, 223500)], { context: 'scene' }),
+    propItem('prop/oj-stand', 'Florida', 'Welcome Center OJ stand', (env) => [new OjStand(env.ctx, 218600)], { context: 'scene' }),
   );
 
   // Landmarks.
@@ -606,6 +645,22 @@ export function buildCatalog(): DevItem[] {
     propItem('landmark/duckies/statue', 'Landmarks', 'Duckies · duck statue', (env) => [new DuckStatue(env.ctx, dz + 3450)]),
     groupItem('landmark/ravenel-bridge', 'Landmarks', 'Ravenel Bridge (whole)', (env) => buildBridge(env.ctx), { x: BRIDGE.start - 200, y: -800, w: BRIDGE.end - BRIDGE.start + 400, h: 1000 }),
     propItem('landmark/ravenel-bridge/tower', 'Landmarks', 'Ravenel Bridge · tower', (env) => [new BridgeTower(env.ctx, 77400)], { context: 'scene' }),
+    ...BRIDGES.slice(1).map((b) => groupItem(`landmark/${BRIDGE_DEV_IDS[b.id]}`, 'Landmarks', BRIDGE_DEV_LABELS[b.id], (env) => buildBridge(env.ctx, b), { x: b.start - 200, y: -800, w: b.end - b.start + 400, h: 1000 })),
+    groupItem('landmark/airport/regional', 'Landmarks', 'Airport · regional (whole)', (env) => buildAirport(env.ctx, AIRPORTS[0]), { x: AIRPORTS[0].x0 - 300, y: -800, w: AIRPORTS[0].len + 600, h: 900 },
+      (_env, list) => [{ label: 'Take off', run: () => (list.find((p) => p instanceof Airfield) as Airfield | undefined)?.takeoff() }]),
+    groupItem('landmark/airport/international', 'Landmarks', 'Airport · international (whole)', (env) => buildAirport(env.ctx, AIRPORTS[1]), { x: AIRPORTS[1].x0 - 900, y: -800, w: AIRPORTS[1].len + 1200, h: 900 },
+      (_env, list) => [{ label: 'Take off', run: () => (list.find((p) => p instanceof Airfield) as Airfield | undefined)?.takeoff() }]),
+    groupItem('landmark/airport/plane', 'Landmarks', 'Airport · runway + departing plane', (env) => [new Airfield(env.ctx, AIRPORTS[0].x0, 2400, false)], { x: AIRPORTS[0].x0 - 300, y: -700, w: 2000, h: 800 },
+      (_env, list) => [{ label: 'Take off', run: () => (list[0] as Airfield).takeoff() }]),
+    propItem('landmark/airport/terminal', 'Landmarks', 'Airport · terminal (tap: PA + travelers)', (env, c) => [new Terminal(env.ctx, AIRPORTS[0].x0 + 900, c.large ? 2000 : 1050, !!c.large)], { context: 'scene', fields: [bool('large', 'Large (jet bridges + parked planes)')] }),
+    propItem('landmark/airport/control-tower', 'Landmarks', 'Airport · control tower', (env, c) => [new ControlTower(env.ctx, AIRPORTS[0].x0 + 2250, Number(c.h))], { context: 'scene', fields: [range('h', 'Height', 240, 440, 20, 300)] }),
+    propItem('landmark/airport/hangar', 'Landmarks', 'Airport · hangar + prop plane', (env) => [new Hangar(env.ctx, AIRPORTS[0].x0 + 3100, 520, 200)], { context: 'scene' }),
+    propItem('landmark/airport/windsock', 'Landmarks', 'Airport · windsock', (env) => [new Windsock(env.ctx, AIRPORTS[0].x0 + 3900)], { context: 'scene' }),
+    propItem('landmark/airport/fuel-truck', 'Landmarks', 'Airport · fuel truck', (env) => [new FuelTruck(env.ctx, AIRPORTS[0].x0 + 2050)], { context: 'scene' }),
+    propItem('landmark/airport/baggage-train', 'Landmarks', 'Airport · baggage train', (env) => [new BaggageTrain(env.ctx, AIRPORTS[0].x0 + 2550, 450)], { context: 'scene' }),
+    propItem('landmark/airport/radar', 'Landmarks', 'Airport · radar', (env) => [new Radar(env.ctx, AIRPORTS[1].x0 + 3700)], { context: 'scene' }),
+    propItem('landmark/airport/approach-lights', 'Landmarks', 'Airport · approach lights', (env) => [new ApproachLights(env.ctx, AIRPORTS[1].x0 - 700)], { context: 'scene' }),
+    propItem('landmark/talmadge-bridge/tower', 'Landmarks', 'Talmadge Bridge · tower', (env) => [new BridgeTower(env.ctx, BRIDGES[1].start + 1600, TALMADGE)], { context: 'scene' }),
   );
 
   // Cities.
@@ -637,6 +692,64 @@ export function buildCatalog(): DevItem[] {
       },
     },
     propItem('city/charleston/end-park', 'Cities', 'Charleston · end of the road', (env) => [new EndPark(env.ctx, WORLD_END + 110)], { context: 'scene' }),
+    groupItem('city/savannah', 'Cities', 'Savannah (whole)', (env) => buildSavannah(env.ctx, SAV).props, { x: SAV, y: -760, w: 6200, h: 1000 }),
+    propItem('city/savannah/warehouse', 'Cities', 'Savannah · River Street warehouse', (env, c) => [new Warehouse(env.ctx, SAV + 1000, Number(c.w), Number(c.floors), BRICKS[Number(c.color)], Number(c.color), !!c.candy)], {
+      context: 'scene',
+      fields: [sel('color', 'Brick', BRICKS.map((_, i) => [String(i), `Brick ${i + 1}`] as [string, string]), '0'), range('w', 'Width', 200, 320, 10, 260), range('floors', 'Floors', 2, 5, 1, 3), bool('candy', 'Candy shop', false)],
+    }),
+    propItem('city/savannah/city-hall', 'Cities', 'Savannah · City Hall gold dome', (env) => [new CityHall(env.ctx, SAV + 1350)], { context: 'scene' }),
+    propItem('city/savannah/cathedral', 'Cities', 'Savannah · Cathedral of St. John', (env) => [new Cathedral(env.ctx, SAV + 3800)], { context: 'scene' }),
+    propItem('city/savannah/forsyth-fountain', 'Cities', 'Savannah · Forsyth Park fountain', (env) => [new ForsythFountain(env.ctx, SAV + 5300)], { context: 'scene' }),
+    propItem('city/savannah/live-oak', 'Cities', 'Savannah · live oak with moss', (env, c) => [new LiveOak(env.ctx, SAV + 3050, Number(c.size), !!c.front)], {
+      context: 'scene',
+      fields: [range('size', 'Size', 160, 340, 10, 260), bool('front', 'Near side (in front of road)', false)],
+    }),
+    propItem('city/savannah/gas-lamp', 'Cities', 'Savannah · gas lamp', (env, c) => [new GasLamp(env.ctx, SAV + 2900, !!c.front)], { context: 'scene', fields: [bool('front', 'Near side (in front of road)', false)] }),
+    propItem('city/savannah/riverboat', 'Cities', 'Savannah · paddle-wheel riverboat', (env) => [new RiverBand(env.ctx, SAV + 1300, 1200), new Riverboat(env.ctx, SAV + 1900)], { context: 'scene' }),
+    {
+      id: 'city/savannah/waving-girl', category: 'Cities', label: 'Savannah · Waving Girl + riverboat', context: 'scene',
+      build: (env) => {
+        env.addProp(new RiverBand(env.ctx, SAV + 300, 2200));
+        const boat = env.addProp(new Riverboat(env.ctx, SAV + 1500));
+        const girl = env.addProp(new WavingGirl(env.ctx, SAV + 900));
+        girl.boats.push(boat);
+        const focus = { x: SAV + 500, y: -300, w: 1500, h: 560 };
+        return { focus, actions: [{ label: 'Wave', run: () => girl.onTap() }, ...worldActions(env, [girl, boat], focus)] };
+      },
+    },
+    propItem('city/savannah/river', 'Cities', 'Savannah · river (near side)', (env) => [new RiverBand(env.ctx, SAV + 300, 3000)], { context: 'scene' }),
+    groupItem('city/jacksonville', 'Cities', 'Jacksonville (whole)', (env) => buildJacksonville(env.ctx).props, { x: JX - 300, y: -900, w: 6600, h: 1200 }),
+    propItem('city/jacksonville/tower', 'Cities', 'Jacksonville · tower', (env, c) => [new Tower(env.ctx, JX + 1100, { variant: c.variant as TowerVariant, w: Number(c.w), h: Number(c.h) })], {
+      context: 'scene',
+      fields: [sel('variant', 'Variant', [['crown', 'Crown (color lights)'], ['slab', 'Dark glass slab'], ['granite', 'Pink granite'], ['glass', 'Light glass (Orlando)']], 'crown'), range('w', 'Width', 140, 260, 10, 210), range('h', 'Height', 400, 800, 20, 700)],
+    }),
+    propItem('city/jacksonville/mid-rise', 'Cities', 'Jacksonville · mid-rise', (env) => [new MidRise(env.ctx, JX + 780, 150, 320, 0xcfd8e0, 2)], { context: 'scene' }),
+    propItem('city/jacksonville/treaty-oak', 'Cities', 'Jacksonville · Treaty Oak (squirrel)', (env) => [new TreatyOak(env.ctx, JX + 2150)], { context: 'scene' }),
+    propItem('city/jacksonville/friendship-fountain', 'Cities', 'Jacksonville · Friendship Fountain', (env) => [new FriendshipFountain(env.ctx, JX + 4800)], { context: 'scene' }),
+    propItem('city/jacksonville/palm', 'Cities', 'Jacksonville · tall riverwalk palm', (env, c) => [new TallPalm(env.ctx, JX + 2550, -60, Number(c.h), Number(c.lean))], {
+      context: 'scene', fields: [range('h', 'Height', 260, 460, 10, 380), range('lean', 'Lean', -0.15, 0.15, 0.01, 0.05)],
+    }),
+    propItem('city/jacksonville/river', 'Cities', 'Jacksonville · St. Johns riverwalk', (env) => [new JaxRiver(env.ctx, JX - 240, 2000, true, 240)], { context: 'scene' }),
+    propItem('city/jacksonville/pelicans', 'Cities', 'Jacksonville · pelicans on pilings', (env) => [new JaxRiver(env.ctx, JX + 900, 1000), new Pelicans(env.ctx, JX + 1250, 3, 150)], { context: 'scene' }),
+    propItem('city/jacksonville/tugboat', 'Cities', 'Jacksonville · tug + barge', (env) => [new JaxRiver(env.ctx, JX + 500, 2200), new Tugboat(env.ctx, JX + 600, 1800, 0.3)], { context: 'scene' }),
+    groupItem('city/orlando', 'Cities', 'Orlando (whole, with the ending)', (env) => {
+      const set = buildOrlando(env.ctx);
+      return [...set.props, ...buildArrival(env.ctx, FINAL_CITY, set.doorX).props];
+    }, { x: OX + 200, y: -760, w: WORLD_END + 900 - OX - 200, h: 960 }, (env, list) => {
+      const greeters = list.find((p) => p instanceof Greeters) as Greeters | undefined;
+      return [
+        { label: 'Family comes out', run: () => greeters?.emerge() },
+        { label: 'Fireworks', run: () => [0, 1, 2].forEach((k) => env.tweens.after(k * 0.6, () => launchFirework(env.ctx, OX + 3200 + k * 300, -560))) },
+      ];
+    }),
+    propItem('city/orlando/lake-eola', 'Cities', 'Orlando · Lake Eola fountain (tap: light show)', (env) => [new LakeEola(env.ctx, OX + 2080, 1300)], { context: 'scene' }),
+    propItem('city/orlando/swan-boat', 'Cities', 'Orlando · swan paddle boat', (env) => [new LakeEola(env.ctx, OX + 2080, 1300), new SwanBoat(env.ctx, OX + 1750)], { context: 'scene' }),
+    propItem('city/orlando/swan', 'Cities', 'Orlando · swan', (env) => [new LakeEola(env.ctx, OX + 2080, 1300), new Swan(env.ctx, OX + 1980)], { context: 'scene' }),
+    propItem('city/orlando/bandshell', 'Cities', 'Orlando · bandshell', (env) => [new Bandshell(env.ctx, OX + 2900)], { context: 'scene' }),
+    propItem('city/orlando/observation-wheel', 'Cities', 'Orlando · observation wheel', (env) => [new ObservationWheel(env.ctx, OX + 3290, 240)], { context: 'scene' }),
+    propItem('city/orlando/house', 'Cities', 'Orlando · Florida house', (env) => [new FloridaHouse(env.ctx, OX + 3700)], { context: 'scene' }),
+    propItem('city/orlando/flamingo', 'Cities', 'Orlando · lawn flamingo', (env) => [new Flamingo(env.ctx, OX + 4330)], { context: 'scene' }),
+    propItem('city/orlando/end-park', 'Cities', 'Orlando · end of the road (Florida)', (env) => [new EndPark(env.ctx, WORLD_END + 110, true)], { context: 'scene' }),
   );
 
   // Backgrounds.
@@ -647,6 +760,13 @@ export function buildCatalog(): DevItem[] {
     roadItem('duckies-lot', 'Duckies lot', ZONES.duckies[0] + 1500),
     roadItem('bridge', 'Ravenel Bridge deck', 78200),
     roadItem('charleston-street', 'Charleston street', 82000),
+    roadItem('savannah-cobble', 'Savannah cobblestone street', 164000),
+    roadItem('jacksonville-riverwalk', 'Jacksonville riverwalk', 246000),
+    roadItem('orlando-pavers', 'Orlando brick pavers', 328000),
+    roadItem('talmadge-deck', 'Talmadge Bridge deck', 160200),
+    roadItem('lift-bridge-deck', 'Main Street lift bridge deck', 242200),
+    roadItem('flyover', 'I-4 flyover over ground', 324200),
+    roadItem('airport', 'Airport stretch (barrier)', 197000),
     skyItem,
   );
 

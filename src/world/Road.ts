@@ -1,11 +1,11 @@
 // The highway itself: Jersey barrier + light poles behind, asphalt with a yellow
 // left edge line and white dashed lanes, grass shoulder in front. Follows the
-// terrain so it arches over the Ravenel Bridge.
+// terrain so it arches over every bridge (water under river bridges, grass under the flyover).
 import { Graphics } from 'pixi.js';
 import { P, darken } from '../style/palette';
 import { makeRng, range } from '../core/rng';
 import { roadHeight } from './Terrain';
-import { BRIDGE, inZone, isOpenRoad } from './Route';
+import { BRIDGES, isOpenRoad, zoneAt, type BridgeSpec, type ZoneSpec } from './Route';
 import { ChunkLayer } from './ChunkLayer';
 
 export const ROAD_FAR = -44;
@@ -13,10 +13,24 @@ export const ROAD_NEAR = 30;
 export const LANE_Y = -16;
 const BARRIER_H = 28;
 const STEP = 20;
+/** Water surface (or the ground under a flyover), below the road. */
 const WATER_Y = 64;
-const BRIDGE_WATER = [BRIDGE.start + 250, BRIDGE.end - 250];
 
-const underBridge = (x: number) => x > BRIDGE_WATER[0] && x < BRIDGE_WATER[1];
+/** The bridge whose open span covers x (water or ground drawn under the deck). */
+function spanAt(x: number): BridgeSpec | null {
+  for (const b of BRIDGES) if (x > b.span[0] && x < b.span[1]) return b;
+  return null;
+}
+const underBridge = (x: number) => spanAt(x) !== null;
+
+/** Far-side strip colors for each open-road surface: [fill, curb, height]. */
+const SURFACE: Record<NonNullable<ZoneSpec['surface']>, [number, number, number]> = {
+  sidewalk: [P.sidewalk, P.curb, 16],
+  lot: [0x8d9299, 0x7f848b, 36],
+  cobble: [0x9b9184, 0xb9ad9c, 18],
+  riverwalk: [0xe6e0d2, 0xd2cab6, 18],
+  pavers: [0xc98f6c, 0xe2b79a, 18],
+};
 
 export function roadLayer(): ChunkLayer {
   const W = 1200;
@@ -28,26 +42,38 @@ export function roadLayer(): ChunkLayer {
     for (let x = x0; x <= x0 + W; x += STEP) xs.push(x);
     const h = (x: number) => -roadHeight(x);
 
-    // Ground in front of the road (grass), or harbor water under the bridge.
+    // Ground in front of the road (grass), or water / low ground under a bridge.
     for (let k = 0; k < xs.length - 1; k++) {
       const a = xs[k], b = xs[k + 1];
-      if (underBridge(a)) {
+      const span = spanAt(a);
+      if (span?.under === 'water') {
         g.rect(a, WATER_Y, b - a + 0.5, 4000).fill(P.water);
+      } else if (span) {
+        // Under the flyover: grass with a frontage road.
+        g.rect(a, WATER_Y, b - a + 0.5, 4000).fill(P.grassNear);
+        g.rect(a, WATER_Y + 6, b - a + 0.5, 22).fill(0x8a8f96);
+        g.rect(a, WATER_Y + 16, b - a + 0.5, 2).fill({ color: P.white, alpha: 0.6 });
       } else {
         g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, 4000, a, 4000]).fill(P.grassNear);
       }
     }
-    if (xs.some(underBridge)) {
-      for (let k = 0; k < 14; k++) {
-        const sx = x0 + range(rng, 0, W);
-        if (underBridge(sx)) g.roundRect(sx, WATER_Y + range(rng, 10, 200), range(rng, 30, 80), 4, 2).fill({ color: P.white, alpha: 0.5 });
+    for (const br of BRIDGES) {
+      if (br.end < x0 || br.start > x0 + W) continue;
+      if (br.under === 'water') {
+        for (let k = 0; k < 14; k++) {
+          const sx = x0 + range(rng, 0, W);
+          if (spanAt(sx) === br) g.roundRect(sx, WATER_Y + range(rng, 10, 200), range(rng, 30, 80), 4, 2).fill({ color: P.white, alpha: 0.5 });
+        }
       }
-      // Bridge piers.
-      for (let x = Math.ceil(x0 / 520) * 520; x < x0 + W; x += 520) {
+      // Piers (steel-blue on the lift bridge, round columns under the flyover).
+      const pier = br.kind === 'lift' ? 0x6f86a3 : 0xd2d6db;
+      for (let x = Math.ceil(x0 / br.pierStep) * br.pierStep; x < x0 + W; x += br.pierStep) {
+        if (x <= br.start || x >= br.end) continue;
         const top = h(x) + ROAD_NEAR + 14;
         if (top < WATER_Y - 10) {
-          g.roundRect(x - 16, top, 32, WATER_Y - top + 6, 4).fill(0xd2d6db);
-          g.rect(x + 16 - 9, top, 9, WATER_Y - top + 6).fill({ color: P.black, alpha: 0.07 });
+          const w = br.kind === 'flyover' ? 26 : 32;
+          g.roundRect(x - w / 2, top, w, WATER_Y - top + 6, br.kind === 'flyover' ? 10 : 4).fill(pier);
+          g.rect(x + w / 2 - w * 0.28, top, w * 0.28, WATER_Y - top + 6).fill({ color: P.black, alpha: 0.07 });
         }
       }
     }
@@ -73,10 +99,14 @@ export function roadLayer(): ChunkLayer {
     // Far-side sidewalk / lot in the open (non-interstate) stretches.
     for (let k = 0; k < xs.length - 1; k++) {
       const a = xs[k], b = xs[k + 1];
-      if (!isOpenRoad(a)) continue;
-      const lot = inZone(a, 'duckies');
-      g.rect(a, h(a) + ROAD_FAR - (lot ? 36 : 16), b - a + 0.5, lot ? 36 : 16).fill(lot ? 0x8d9299 : P.sidewalk);
-      g.rect(a, h(a) + ROAD_FAR - 4, b - a + 0.5, 4).fill(lot ? 0x7f848b : P.curb);
+      const z = zoneAt(a);
+      if (!z?.open) continue;
+      const [fill, curb, hh] = SURFACE[z.surface ?? 'sidewalk'];
+      g.rect(a, h(a) + ROAD_FAR - hh, b - a + 0.5, hh).fill(fill);
+      g.rect(a, h(a) + ROAD_FAR - 4, b - a + 0.5, 4).fill(curb);
+      if (z.surface === 'cobble' || z.surface === 'pavers') {
+        for (let cx = a; cx < b; cx += 10) g.rect(cx, h(a) + ROAD_FAR - hh + 6, 1, hh - 10).fill({ color: P.black, alpha: 0.06 });
+      }
     }
 
     // Asphalt band.
@@ -98,7 +128,7 @@ export function roadLayer(): ChunkLayer {
     for (let k = 0; k < xs.length - 1; k++) {
       const a = xs[k], b = xs[k + 1];
       const edgeColor = open(a) ? P.laneWhite : P.edgeYellow;
-      if (!open(a) || inZone(a, 'charleston')) {
+      if (!open(a) || zoneAt(a)?.kind === 'city') {
         line(g, a, b, h, ROAD_FAR + 5, 4, open(a) ? P.edgeYellow : edgeColor);
       }
       line(g, a, b, h, ROAD_NEAR - 6, 3, { color: P.laneWhite, alpha: 0.85 });

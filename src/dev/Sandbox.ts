@@ -67,7 +67,7 @@ export interface DevEnv {
   /** Screen-space mount (for whole scenes like the garage). */
   screen: Container;
   setLayerVisible(name: LayerName, on: boolean): void;
-  setSky(gold: number, dusk: number): void;
+  setSky(gold: number, dusk: number, morning?: number): void;
   /** Pixels per art unit for crisp art at the current zoom. */
   ppu(extraScale?: number): number;
   zoom(): number;
@@ -151,6 +151,7 @@ export class Sandbox implements DevEnv {
   constructor(readonly app: Application) {
     this.fx = new Particles(app.renderer);
     const L = this.L;
+    L.back.sortableChildren = true;
     this.world.addChild(L.skyFx, L.back, L.fxBack, this.road, L.roadDecor, L.mid, L.shadow, L.car, L.carRig, L.front, L.fx, this.overlayG);
     const p = this.parallax;
     this.view.addChild(p.clouds, p.skyline, p.far, p.near, this.world, p.foreground);
@@ -234,8 +235,8 @@ export class Sandbox implements DevEnv {
     this.layerOn[name] = on;
   }
 
-  setSky(gold: number, dusk: number): void {
-    this.view.tint = this.sky.update(gold, dusk);
+  setSky(gold: number, dusk: number, morning = 0): void {
+    this.view.tint = this.sky.update(morning, gold, dusk);
   }
 
   ppu(extra = 1): number {

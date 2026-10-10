@@ -14,6 +14,8 @@ export interface InputHost {
   /** Design (screen) → world. */
   toWorld(sx: number, sy: number): { x: number; y: number };
   hitCar(wx: number, wy: number): boolean;
+  /** Screen-space UI (e.g. the restart button) gets first pick; return true to consume the touch. */
+  tapUi(sx: number, sy: number): boolean;
   /** Returns true if a tappable thing answered the touch. */
   tapThing(wx: number, wy: number): boolean;
   onCarTap(): void;
@@ -87,6 +89,7 @@ export class Input {
     if (!this.enabled_) return;
     this.host.onAnyInput();
     const s = this.host.toDesign(e.clientX, e.clientY);
+    if (this.host.tapUi(s.x, s.y)) return;
     const w = this.host.toWorld(s.x, s.y);
     let st: PointerState;
     if (this.host.hitCar(w.x, w.y)) {

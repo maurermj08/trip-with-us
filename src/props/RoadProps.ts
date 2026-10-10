@@ -5,10 +5,25 @@ import type { Ctx } from '../core/Ctx';
 import { P, darken } from '../style/palette';
 import { contactShadow, cornerRect } from '../style/shapes';
 import { rand } from '../core/rng';
-import { RAMPS } from '../world/Route';
+import { RAMPS, WORLD_END } from '../world/Route';
 import { surfaceAt } from '../world/Terrain';
 
-// ---------- Cardboard boxes ----------
+// ---------- Cardboard boxes (and Florida orange crates) ----------
+const ORANGE = 0xff9f1c;
+
+/** A slatted wooden crate full of oranges, bottom-centred at (0, 0), size s. */
+function drawCrate(g: Graphics, s: number, k: number): void {
+  const wood = k % 2 ? 0xe0a96d : 0xd89c5e;
+  for (let i = 0; i < 3; i++) {
+    const r = s * 0.16;
+    g.circle(-s * 0.3 + i * s * 0.3, -s + r * 0.4, r).fill(ORANGE);
+  }
+  g.roundRect(-s / 2, -s * 0.9, s, s * 0.9, 3).fill(darken(wood, 0.25));
+  for (let i = 0; i < 3; i++) g.roundRect(-s / 2, -s * 0.9 + i * s * 0.3, s, s * 0.24, 2).fill(wood);
+  cornerRect(g, s / 2 - s * 0.28, -s * 0.9, s * 0.28, s * 0.9, 0, 3, 3, 0).fill({ color: P.black, alpha: 0.08 });
+  g.roundRect(-s * 0.22, -s * 0.6, s * 0.44, s * 0.2, 3).fill(0xfff1d6);
+  g.circle(0, -s * 0.5, s * 0.07).fill(ORANGE);
+}
 interface Flying { g: Graphics; vx: number; vy: number; spin: number; groundY: number; done: boolean }
 
 export class Boxes extends Prop {
@@ -16,7 +31,8 @@ export class Boxes extends Prop {
   private flying: Flying[] = [];
   private broken = false;
 
-  constructor(ctx: Ctx, x: number, n: number) {
+  /** `crate`: wooden orange crates (Florida) instead of cardboard boxes. */
+  constructor(ctx: Ctx, x: number, n: number, private crate = false) {
     super(ctx, x, 6);
     const size = 50;
     const layout: [number, number][] =
@@ -29,11 +45,14 @@ export class Boxes extends Prop {
     layout.forEach(([cx, row], k) => {
       const s = size * (0.9 + ((k * 37) % 10) / 50);
       const g = new Graphics();
-      g.roundRect(-s / 2, -s, s, s, 3).fill(k % 2 ? P.cardboard : darken(P.cardboard, 0.05));
-      cornerRect(g, s / 2 - s * 0.28, -s, s * 0.28, s, 0, 3, 3, 0).fill({ color: P.black, alpha: 0.07 });
-      g.roundRect(-s / 2, -s, s, 3, 1.5).fill({ color: P.white, alpha: 0.4 });
-      g.rect(-4, -s, 8, s * 0.42).fill(P.tape);
-      g.roundRect(-s * 0.3, -s * 0.35, s * 0.24, s * 0.14, 2).fill({ color: P.white, alpha: 0.55 });
+      if (crate) drawCrate(g, s, k);
+      else {
+        g.roundRect(-s / 2, -s, s, s, 3).fill(k % 2 ? P.cardboard : darken(P.cardboard, 0.05));
+        cornerRect(g, s / 2 - s * 0.28, -s, s * 0.28, s, 0, 3, 3, 0).fill({ color: P.black, alpha: 0.07 });
+        g.roundRect(-s / 2, -s, s, 3, 1.5).fill({ color: P.white, alpha: 0.4 });
+        g.rect(-4, -s, 8, s * 0.42).fill(P.tape);
+        g.roundRect(-s * 0.3, -s * 0.35, s * 0.24, s * 0.14, 2).fill({ color: P.white, alpha: 0.55 });
+      }
       g.pivot.set(0, -s / 2);
       g.position.set(cx * size * 1.02, -row * size * 0.98 - s / 2);
       this.view.addChild(g);
@@ -75,8 +94,8 @@ export class Boxes extends Prop {
         done: false,
       });
       this.ctx.fx.emit(this.ctx.layers.fx, {
-        x: this.x + g.x, y: this.y + g.y, count: 6, shape: 'square',
-        tint: [P.cardboard, P.cardboardDark, P.tape], speed: [150, 420], angle: [-2.8, -0.3],
+        x: this.x + g.x, y: this.y + g.y, count: 6, shape: this.crate ? 'circle' : 'square',
+        tint: this.crate ? [ORANGE, ORANGE, 0xe0a96d] : [P.cardboard, P.cardboardDark, P.tape], speed: [150, 420], angle: [-2.8, -0.3],
         gravity: 1200, life: [0.6, 1.2], size: [6, 14], spin: 10, vx: car.vx * 0.5,
       });
     }
@@ -372,8 +391,8 @@ export class BeachBall extends Prop {
       this.vx *= Math.exp(-dt * 0.15);
     }
     this.x += this.vx * dt;
-    if (this.x > 85900) {
-      this.x = 85900;
+    if (this.x > WORLD_END - 300) {
+      this.x = WORLD_END - 300;
       this.vx = -Math.abs(this.vx) * 0.5;
     }
     this.ball.rotation += (this.vx * dt) / this.r;

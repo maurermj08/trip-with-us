@@ -1,7 +1,7 @@
 // Drawing helpers that bake in the diorama style rules:
 // rounded, no outlines, light from the left, soft contact shadows.
 import { Graphics } from 'pixi.js';
-import { P, darken } from './palette';
+import { P, darken, lighten } from './palette';
 import type { Rng } from '../core/rng';
 
 export const R = { building: 6, sign: 8, small: 3 };
@@ -184,6 +184,67 @@ export function cloud(g: Graphics, x: number, y: number, w: number, rng: Rng): G
     const t = (i + 0.5) / n;
     const r = h * (0.45 + Math.sin(t * Math.PI) * 0.5) * (0.8 + rng() * 0.3);
     g.circle(x - w / 2 + t * w, y - h * 0.4 - r * 0.3, r).fill(P.cloud);
+  }
+  return g;
+}
+
+// ---------- Southern / Florida plants (Phase 3) ----------
+
+/** Longleaf pine: tall bare trunk with a few tufted needle puffs at the top. Origin at base. */
+export function longleafPine(g: Graphics, x: number, y: number, size: number, lean = 0): Graphics {
+  contactShadow(g, x, y, size * 0.25);
+  const tx = x + lean * size * 0.15;
+  g.moveTo(x - size * 0.022, y)
+    .quadraticCurveTo(x + lean * size * 0.05, y - size * 0.5, tx - size * 0.012, y - size * 0.92)
+    .lineTo(tx + size * 0.012, y - size * 0.92)
+    .quadraticCurveTo(x + lean * size * 0.05 + size * 0.03, y - size * 0.5, x + size * 0.022, y)
+    .closePath()
+    .fill(0x8a6a4e);
+  const c = 0x4f8a4a;
+  // short crooked branches ending in small needle tufts
+  const tufts: [number, number, number][] = [[-0.11, -0.8, 0.05], [0.12, -0.84, 0.055], [-0.03, -0.96, 0.06], [0.14, -0.7, 0.045], [-0.13, -0.68, 0.04], [0.04, -0.88, 0.05], [-0.08, -0.9, 0.045]];
+  for (const [dx, dy] of tufts) g.moveTo(tx, y + dy * size + 6).lineTo(tx + dx * size, y + dy * size).stroke({ width: 2, color: 0x7a5c44 });
+  tufts.forEach(([dx, dy, r], i) => {
+    const px = tx + dx * size, py = y + dy * size;
+    g.ellipse(px, py, r * size * 1.5, r * size * 0.8).fill(i % 2 ? darken(c, 0.08) : c);
+    g.ellipse(px, py - r * size * 0.3, r * size * 0.9, r * size * 0.5).fill(lighten(c, 0.08));
+  });
+  return g;
+}
+
+/** Saw palmetto: a low clump of fan fronds. Origin at base. */
+export function sawPalmetto(g: Graphics, x: number, y: number, w: number, color = 0x6f9f5a): Graphics {
+  const h = w * 0.55;
+  for (let i = 0; i < 7; i++) {
+    const a = Math.PI * (1.08 + (i / 6) * 0.84);
+    const ex = x + Math.cos(a) * w * 0.55, ey = y + Math.sin(a) * h;
+    const nx = -Math.sin(a) * w * 0.07, ny = Math.cos(a) * w * 0.07;
+    g.moveTo(x, y)
+      .quadraticCurveTo((x + ex) / 2 + nx, (y + ey) / 2 + ny, ex, ey)
+      .quadraticCurveTo((x + ex) / 2 - nx, (y + ey) / 2 - ny, x, y)
+      .fill(i % 2 ? darken(color, 0.1) : color);
+  }
+  return g;
+}
+
+/** Bald cypress: flared base, straight trunk, flat feathery crown. Origin at base. */
+export function cypress(g: Graphics, x: number, y: number, size: number): Graphics {
+  const trunk = 0x8b6b52;
+  g.poly([x - size * 0.09, y, x - size * 0.03, y - size * 0.25, x - size * 0.025, y - size * 0.7, x + size * 0.025, y - size * 0.7, x + size * 0.03, y - size * 0.25, x + size * 0.09, y]).fill(trunk);
+  const c = 0x6a9a58;
+  g.ellipse(x, y - size * 0.72, size * 0.2, size * 0.1).fill(darken(c, 0.06));
+  g.ellipse(x - size * 0.06, y - size * 0.86, size * 0.16, size * 0.09).fill(c);
+  g.ellipse(x + size * 0.05, y - size * 0.98, size * 0.12, size * 0.07).fill(c);
+  return g;
+}
+
+/** Live oak dripping with long Spanish moss (Savannah squares, Georgia coast). Origin at base. */
+export function mossyOak(g: Graphics, x: number, y: number, size: number): Graphics {
+  liveOak(g, x, y, size);
+  for (let i = -5; i <= 5; i++) {
+    const mx = x + i * size * 0.07;
+    const len = size * (0.12 + ((i * 7 + 20) % 5) * 0.035);
+    g.roundRect(mx - 2.5, y - size * 0.47, 5, len, 2.5).fill({ color: P.moss, alpha: 0.95 });
   }
   return g;
 }

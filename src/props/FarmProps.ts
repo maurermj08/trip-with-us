@@ -7,13 +7,22 @@ import { contactShadow } from '../style/shapes';
 import { rand } from '../core/rng';
 import { ease } from '../core/Tween';
 
-const FIELD_Y = -86;
+/** Fence posts stand just behind the median barrier (its top is at y = -72), so they never float. */
+const FENCE_Y = -70;
+/** Cows graze a little further back than the fence, so they read as behind it. */
+const COW_Y = -77;
+/** Draw order inside the back layer: cows, then the fence, then birds sitting on it. */
+export const FARM_Z = { cow: 1, fence: 2, birds: 3 };
 
 export class Fence extends Prop {
   constructor(ctx: Ctx, x: number, len: number) {
-    super(ctx, x, FIELD_Y);
+    super(ctx, x, FENCE_Y);
     this.layer = 'back';
+    this.view.zIndex = FARM_Z.fence;
     const g = new Graphics();
+    // A strip of field under the fence, topping out just below the cows' hooves (so it never
+    // covers them; it's drawn in front of the cows along with the fence).
+    g.roundRect(-40, COW_Y - FENCE_Y + 1, len + 80, FENCE_Y - COW_Y + 10, 4).fill(P.grassFar);
     for (let px = 0; px <= len; px += 90) g.roundRect(px - 3, -40, 6, 42, 2).fill(0x9c7a55);
     g.roundRect(0, -34, len, 4, 2).fill(0xb38e66);
     g.roundRect(0, -18, len, 4, 2).fill(0xb38e66);
@@ -33,8 +42,9 @@ export class Cow extends Prop {
   private looked = false;
 
   constructor(ctx: Ctx, x: number) {
-    super(ctx, x, FIELD_Y + 10);
+    super(ctx, x, COW_Y);
     this.layer = 'back';
+    this.view.zIndex = FARM_Z.cow;
     const g = new Graphics();
     contactShadow(g, 0, 0, 130);
     // legs
@@ -46,7 +56,8 @@ export class Cow extends Prop {
     g.ellipse(22, -58, 14, 10).fill(0x2e2a28);
     g.ellipse(-42, -50, 9, 7).fill(0x2e2a28);
     g.ellipse(14, -78, 10, 5).fill(0x2e2a28);
-    g.ellipse(10, -33, 12, 7).fill(0xf5b5b8);
+    // udder between the hind legs (the head is at +x)
+    g.ellipse(-30, -33, 11, 7).fill(0xf5b5b8);
     g.roundRect(-50, -82, 100, 3, 1.5).fill({ color: P.white, alpha: 0.6 });
     this.body.addChild(g);
 
@@ -116,8 +127,9 @@ export class Birds extends Prop {
   private away = 0;
 
   constructor(ctx: Ctx, x: number) {
-    super(ctx, x, FIELD_Y - 34);
+    super(ctx, x, FENCE_Y - 34);
     this.layer = 'back';
+    this.view.zIndex = FARM_Z.birds;
     for (let k = 0; k < 5; k++) {
       const c = new Container();
       const g = new Graphics();

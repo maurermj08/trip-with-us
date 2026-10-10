@@ -63,6 +63,8 @@ export class Synth {
     filter?: number;
     q?: number;
     curve?: 'exp' | 'lin';
+    /** Seconds to hold at full volume before releasing (sustained sounds like horns). */
+    hold?: number;
   }): void {
     const ctx = this.ctx;
     if (!ctx) return;
@@ -79,6 +81,7 @@ export class Synth {
     const atk = o.attack ?? 0.005;
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(peak, t0 + atk);
+    if (o.hold) g.gain.setValueAtTime(peak, t0 + Math.max(atk, Math.min(o.hold, o.dur - 0.01)));
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
     let node: AudioNode = osc;
     if (o.filter) {

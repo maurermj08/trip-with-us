@@ -14,12 +14,13 @@ function gradientTexture(stops: [number, number][]): Texture {
 }
 
 /**
- * Screen-fixed sky: day gradient with golden-hour and dusk gradients crossfaded on top.
+ * Screen-fixed sky: day gradient with morning, golden-hour and dusk gradients crossfaded on top.
  * Also provides the matching tint for the scene so everything warms up together.
  */
 export class Sky extends Container {
   private base = new Graphics();
   private day = new Sprite(gradientTexture([[0, P.skyTop], [1, P.skyBottom]]));
+  private morn = new Sprite(gradientTexture([[0, P.mornTop], [1, P.mornBottom]]));
   private gold = new Sprite(gradientTexture([[0, P.goldTop], [1, P.goldBottom]]));
   private dusk = new Sprite(gradientTexture([[0, P.duskTop], [0.6, P.duskMid], [1, P.duskBottom]]));
 
@@ -27,22 +28,24 @@ export class Sky extends Container {
     super();
     this.gold.alpha = 0;
     this.dusk.alpha = 0;
-    this.addChild(this.base, this.day, this.gold, this.dusk);
+    this.addChild(this.base, this.day, this.morn, this.gold, this.dusk);
   }
 
   /** horizonY: screen y (design units) where the gradient ends. */
   resize(viewW: number, viewH: number, horizonY: number): void {
     this.base.clear().rect(0, 0, viewW, viewH).fill(P.skyBottom);
-    for (const s of [this.day, this.gold, this.dusk]) {
+    for (const s of [this.day, this.morn, this.gold, this.dusk]) {
       s.width = viewW;
       s.height = horizonY + 40;
     }
   }
 
-  /** gold, dusk: 0..1. Returns the tint to apply to the scene. */
-  update(gold: number, dusk: number): number {
+  /** morning, gold, dusk: 0..1. Returns the tint to apply to the scene. */
+  update(morning: number, gold: number, dusk: number): number {
+    this.morn.alpha = morning;
     this.gold.alpha = gold;
     this.dusk.alpha = dusk;
-    return lerpColor(lerpColor(0xffffff, 0xfff0dc, gold), 0xe6d2e4, dusk);
+    const day = lerpColor(lerpColor(0xffffff, 0xfff6ee, morning), 0xfff0dc, gold);
+    return lerpColor(day, 0xe6d2e4, dusk);
   }
 }

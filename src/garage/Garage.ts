@@ -161,7 +161,9 @@ export class Garage extends Container {
     });
     // shelf board for the cans
     const g = this.room;
-    const right = L.door.x - 40, left = right - 5 * 40 - 20;
+    // Long enough for every can (one per shared color), with a little lip at each end.
+    const cans = this.decor.children.filter((c) => (c.label ?? '').startsWith('can')).length;
+    const right = L.door.x - 40, left = L.door.x - 70 - (cans - 1) * 40 - 32;
     g.roundRect(left, 92 + 30 + 52, right - left, 10, 3).fill(0x9c7a55);
     g.roundRect(left, 92 + 30 + 52, right - left, 3, 1.5).fill({ color: P.white, alpha: 0.35 });
   }
