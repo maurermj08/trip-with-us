@@ -1,0 +1,7 @@
+node_modules
+dist
+playtest
+.DS_Store
+
+# Copyrighted reference photo (drawing reference only, not for publishing)
+mini.jpeg

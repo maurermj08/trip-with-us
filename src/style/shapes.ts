@@ -1,0 +1,189 @@
+// Drawing helpers that bake in the diorama style rules:
+// rounded, no outlines, light from the left, soft contact shadows.
+import { Graphics } from 'pixi.js';
+import { P, darken } from './palette';
+import type { Rng } from '../core/rng';
+
+export const R = { building: 6, sign: 8, small: 3 };
+
+/** Rectangle with independently rounded corners (tl, tr, br, bl). */
+export function cornerRect(
+  g: Graphics, x: number, y: number, w: number, h: number,
+  tl: number, tr: number, br: number, bl: number,
+): Graphics {
+  g.moveTo(x + tl, y)
+    .lineTo(x + w - tr, y)
+    .quadraticCurveTo(x + w, y, x + w, y + tr)
+    .lineTo(x + w, y + h - br)
+    .quadraticCurveTo(x + w, y + h, x + w - br, y + h)
+    .lineTo(x + bl, y + h)
+    .quadraticCurveTo(x, y + h, x, y + h - bl)
+    .lineTo(x, y + tl)
+    .quadraticCurveTo(x, y, x + tl, y)
+    .closePath();
+  return g;
+}
+
+export interface BlockOpts {
+  radius?: number;
+  /** Landmarks use a darker sibling color for the shade instead of black at 7%. */
+  landmark?: boolean;
+  shade?: number;
+  cap?: boolean;
+}
+
+/** A building-like block: right 28% shaded, 3px white bevel cap on top. */
+export function block(g: Graphics, x: number, y: number, w: number, h: number, color: number, o: BlockOpts = {}): Graphics {
+  const r = Math.min(o.radius ?? R.building, w / 2, h / 2);
+  g.roundRect(x, y, w, h, r).fill(color);
+  const sw = w * 0.28;
+  cornerRect(g, x + w - sw, y, sw, h, 0, r, r, 0);
+  if (o.landmark || o.shade !== undefined) g.fill(o.shade ?? darken(color, 0.12));
+  else g.fill({ color: P.black, alpha: 0.07 });
+  if (o.cap !== false) {
+    cornerRect(g, x, y, w, Math.min(3, h), r, r, 0, 0).fill({ color: P.white, alpha: 0.45 });
+  }
+  return g;
+}
+
+/** 5x6 rounded windows on a 9x11 pitch; most white at 75%, ~1 in 5 lit warm. */
+export function windowGrid(
+  g: Graphics, x: number, y: number, w: number, h: number, rng: Rng,
+  opts: { scale?: number; lit?: number } = {},
+): Graphics {
+  const s = opts.scale ?? 1;
+  const pw = 9 * s, ph = 11 * s, ww = 5 * s, wh = 6 * s;
+  const cols = Math.floor((w + pw - ww) / pw);
+  const rows = Math.floor((h + ph - wh) / ph);
+  if (cols <= 0 || rows <= 0) return g;
+  const ox = x + (w - ((cols - 1) * pw + ww)) / 2;
+  const oy = y + (h - ((rows - 1) * ph + wh)) / 2;
+  const lit = opts.lit ?? 0.2;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const warm = rng() < lit;
+      g.roundRect(ox + c * pw, oy + r * ph, ww, wh, 1.5 * s).fill(
+        warm ? { color: P.warmWindow, alpha: 0.95 } : { color: P.windowGlass, alpha: 0.75 },
+      );
+    }
+  }
+  return g;
+}
+
+export function contactShadow(g: Graphics, cx: number, cy: number, w: number, alpha = 0.14): Graphics {
+  return g.ellipse(cx, cy, w / 2, Math.max(3, w * 0.08)).fill({ color: P.black, alpha });
+}
+
+/** A slanted glint for glass. */
+export function glint(g: Graphics, x: number, y: number, w: number, h: number, alpha = 0.55): Graphics {
+  const s = h * 0.45;
+  return g.poly([x + s, y, x + s + w, y, x + w, y + h, x, y + h]).fill({ color: P.white, alpha });
+}
+
+/** Round-canopy tree with a trunk and contact shadow. Origin at the base. */
+export function roundTree(g: Graphics, x: number, y: number, size: number, color: number = P.leaf): Graphics {
+  contactShadow(g, x, y, size * 0.9);
+  g.roundRect(x - size * 0.06, y - size * 0.55, size * 0.12, size * 0.56, 2).fill(P.trunk);
+  const r = size * 0.36;
+  g.circle(x - r * 0.55, y - size * 0.62, r * 0.8).fill(color);
+  g.circle(x + r * 0.55, y - size * 0.66, r * 0.85).fill(darken(color, 0.06));
+  g.circle(x, y - size * 0.86, r).fill(color);
+  g.circle(x - r * 0.35, y - size * 0.95, r * 0.35).fill({ color: P.white, alpha: 0.12 });
+  return g;
+}
+
+/** Layered pine. Origin at the base. */
+export function pineTree(g: Graphics, x: number, y: number, size: number, color: number = P.pine): Graphics {
+  contactShadow(g, x, y, size * 0.5);
+  g.roundRect(x - size * 0.04, y - size * 0.22, size * 0.08, size * 0.23, 2).fill(P.trunk);
+  const tiers = 3;
+  for (let i = 0; i < tiers; i++) {
+    const t = i / tiers;
+    const w = size * (0.5 - t * 0.13);
+    const by = y - size * (0.15 + t * 0.26);
+    const ty = by - size * 0.38;
+    roundedTri(g, x, ty, w, by - ty, 5).fill(i % 2 ? darken(color, 0.05) : color);
+  }
+  return g;
+}
+
+/** Isoceles triangle (apex at x,ty) with softened corners. */
+export function roundedTri(g: Graphics, x: number, ty: number, w: number, h: number, r: number): Graphics {
+  const bl = { x: x - w / 2, y: ty + h }, br = { x: x + w / 2, y: ty + h };
+  g.moveTo(x - r * 0.6, ty + r)
+    .quadraticCurveTo(x, ty - r * 0.2, x + r * 0.6, ty + r)
+    .lineTo(br.x - r * 0.3, br.y - r * 0.6)
+    .quadraticCurveTo(br.x + r * 0.4, br.y, br.x - r, br.y)
+    .lineTo(bl.x + r, bl.y)
+    .quadraticCurveTo(bl.x - r * 0.4, bl.y, bl.x + r * 0.3, bl.y - r * 0.6)
+    .closePath();
+  return g;
+}
+
+/** Sabal palmetto: slender trunk with a starburst of fronds. Origin at base. */
+export function palmetto(g: Graphics, x: number, y: number, size: number, lean = 0, mono?: number): Graphics {
+  if (mono === undefined) contactShadow(g, x, y, size * 0.4);
+  const topX = x + lean * size * 0.25;
+  const topY = y - size;
+  g.moveTo(x - size * 0.035, y)
+    .quadraticCurveTo(x + lean * size * 0.05, y - size * 0.5, topX - size * 0.025, topY)
+    .lineTo(topX + size * 0.025, topY)
+    .quadraticCurveTo(x + lean * size * 0.05 + size * 0.05, y - size * 0.5, x + size * 0.04, y)
+    .closePath()
+    .fill(mono ?? 0x9b8566);
+  palmCrown(g, topX, topY, size * 0.42, mono);
+  return g;
+}
+
+export function palmCrown(g: Graphics, x: number, y: number, r: number, mono?: number): Graphics {
+  const n = 9;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI + (i / (n - 1)) * Math.PI;
+    const droop = Math.abs(Math.cos(a)) * 0.45;
+    const ex = x + Math.cos(a) * r;
+    const ey = y + Math.sin(a) * r * 0.75 + droop * r;
+    const nx = -Math.sin(a), ny = Math.cos(a);
+    const w = r * 0.13;
+    g.moveTo(x, y)
+      .quadraticCurveTo((x + ex) / 2 + nx * w, (y + ey) / 2 + ny * w - r * 0.15, ex, ey)
+      .quadraticCurveTo((x + ex) / 2 - nx * w, (y + ey) / 2 - ny * w - r * 0.1, x, y)
+      .fill(mono ?? (i % 2 ? P.palm : darken(P.palm, 0.1)));
+  }
+  // drooping lower fronds
+  for (const s of [-1, 1]) {
+    g.moveTo(x, y)
+      .quadraticCurveTo(x + s * r * 0.6, y - r * 0.05, x + s * r * 0.85, y + r * 0.45)
+      .quadraticCurveTo(x + s * r * 0.45, y + r * 0.1, x, y + 2)
+      .fill(mono ?? darken(P.palm, 0.15));
+  }
+  g.circle(x, y, r * 0.09).fill(mono ?? 0x7c6a4e);
+  return g;
+}
+
+/** Live oak with Spanish moss. Origin at base. */
+export function liveOak(g: Graphics, x: number, y: number, size: number): Graphics {
+  contactShadow(g, x, y, size * 1.2);
+  g.roundRect(x - size * 0.06, y - size * 0.4, size * 0.12, size * 0.41, 3).fill(0x7a6048);
+  const c = 0x4f8f4c;
+  g.ellipse(x - size * 0.3, y - size * 0.48, size * 0.34, size * 0.16).fill(c);
+  g.ellipse(x + size * 0.32, y - size * 0.5, size * 0.36, size * 0.17).fill(darken(c, 0.07));
+  g.ellipse(x, y - size * 0.6, size * 0.4, size * 0.2).fill(c);
+  for (let i = -3; i <= 3; i++) {
+    const mx = x + i * size * 0.12;
+    g.roundRect(mx - 2, y - size * 0.45, 4, size * (0.1 + ((i + 5) % 3) * 0.05), 2).fill(P.moss);
+  }
+  return g;
+}
+
+/** Fluffy cloud of overlapping circles. */
+export function cloud(g: Graphics, x: number, y: number, w: number, rng: Rng): Graphics {
+  const n = 4 + Math.floor(rng() * 3);
+  const h = w * 0.28;
+  g.roundRect(x - w / 2, y - h * 0.5, w, h * 0.6, h * 0.3).fill(P.cloud);
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const r = h * (0.45 + Math.sin(t * Math.PI) * 0.5) * (0.8 + rng() * 0.3);
+    g.circle(x - w / 2 + t * w, y - h * 0.4 - r * 0.3, r).fill(P.cloud);
+  }
+  return g;
+}

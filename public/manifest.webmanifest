@@ -1,0 +1,10 @@
+{
+  "name": "i95",
+  "short_name": "i95",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#6fb8f0",
+  "theme_color": "#6fb8f0",
+  "start_url": "./",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
