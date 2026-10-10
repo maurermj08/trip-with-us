@@ -1,0 +1,11 @@
+[
+  { "id": "silver", "name": "Silver", "swatch": "#c3c8ce" },
+  { "id": "white", "name": "White", "swatch": "#f4f4f1" },
+  { "id": "black", "name": "Black", "swatch": "#1e2023" },
+  { "id": "red", "name": "Red", "swatch": "#d93b30" },
+  { "id": "yellow", "name": "Yellow", "swatch": "#f2c230" },
+  { "id": "blue", "name": "Blue", "swatch": "#2f80d1" },
+  { "id": "green", "name": "Green", "swatch": "#3fa14a" },
+  { "id": "purple", "name": "Purple", "swatch": "#8e63c9" },
+  { "id": "pink", "name": "Pink", "swatch": "#f08aa8" }
+]
