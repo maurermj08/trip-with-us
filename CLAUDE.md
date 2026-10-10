@@ -1,33 +1,43 @@
 # i95: notes for Claude
 
-Casual, fail-free side-scrolling road-trip game for young kids. TypeScript + Vite + PixiJS v8, no art or audio assets: everything is drawn with Pixi `Graphics` and every sound is synthesized with WebAudio. Primary target: iPad landscape in Safari (also desktop/phone).
+Casual, fail-free side-scrolling road-trip game for young kids. TypeScript + Vite + PixiJS v8. The world is drawn in code with Pixi `Graphics`. **Vehicles are SVG art in `art/`** that the owner finishes in Illustrator. Every sound is synthesized with WebAudio. Primary target: iPad landscape in Safari (also desktop/phone).
 
 - `i95.md`: the owner's design doc. **The design pillars and "Do Nots" are hard rules.** Check every feature against them.
 - `docs/ROADMAP.md`: phased plan, with current status and the code seams each phase will touch.
+- `art/README.md`: the owner-facing guide to vehicle art: layers, tokens, Illustrator settings, adding a car.
 
 ## Commands
 
 ```sh
 npm run dev          # Vite dev server (LAN-exposed for iPad testing)
-npm test             # vitest: physics + route invariants (tests/)
+npm test             # vitest: physics, route, art validation, recolor, garage model (tests/)
 npm run typecheck
-npm run build        # typecheck + production build
+npm run build        # typecheck + production build (the Lab is dev-only, never in dist)
+npm run lab          # Vehicle Lab: preview art, reference-photo overlay, validator
+npm run art:gen -- <vehicle-id> | --all | --library [--force]   # spec.json → art.svg (never clobbers hand edits)
+npm run art:check    # validate everything in art/
 npm run playtest -- out.png jump:26300 wait:1000 shot:a.png   # headless screenshots, see tools/playtest.mjs
 ```
 
 Verify visual work with `npm run playtest` against a running dev server (`I95_URL=http://localhost:<port>`), then look at the PNGs in `playtest/`. Headless WebGL runs below 20fps and the game clamps dt to 1/20s, so game time runs slow there: wait longer than you'd expect. `?debug=1` shows a position readout and jump buttons. `window.game` is exposed for scripting.
+
+- **Garage vs trip:** the game boots into the **Garage**. `?car=<vehicle-id>` skips it, and the playtest tool adds `car=mini-countryman-2019` by default. Use `I95_GARAGE=1` to start in the garage, with the steps `pick:<chip-key>` and `go`.
+- **Lab screenshots:** `I95_PAGE=lab.html I95_QUERY="car=<id>&true&ref&alpha=0.3&acc=roof-box"`.
 
 ## Design rules that shape code
 
 - **No text in play.** The only text allowed is in-world signage (signs, billboards, store names), drawn with Overpass via `signText()`. No UI labels, tutorials, scores or timers. Hints are motion (jiggles, the chevron pulse), never words.
 - **Nothing fails or blocks.** Contact never stops the car or penalizes. Props react, the car squashes, and the trip keeps going. Taps on things still count as driving zones (`Input` never swallows a drive touch).
 - **Every touch answers.** Any tap gets sound and motion. Background taps get a ripple and a pentatonic pluck. Every `Prop` needs an `onTap`.
-- **Parody names** for anything trademarked (Duckies = Buc-ee's, Potato World = Disney World, Over the Line = South of the Border). Real names are fine for cities and landmarks.
+- **Parody names** for trademarked businesses and places (Duckies = Buc-ee's, Potato World = Disney World, Over the Line = South of the Border). Real names are fine for cities and landmarks.
+- **Real vehicles** are drawn as their real make, model and year. Garage captions may name them; that's the **only** text outside signage. Brand **emblems are simplified, inspired-by shapes, never real logos**, because the repo is public.
 - **Style** (from `i95.md`), baked into `src/style/shapes.ts`, so use those helpers rather than re-deriving the rules:
   - Rounded shapes with no outlines. Radii: buildings 6, signs 8, small parts 2–4.
   - Light comes from the left. `block()` shades the right 28% (black at 7%, or a darker sibling color with `landmark: true`) and adds a 3px white cap at 45%.
   - `contactShadow()` goes under every vehicle and tree. `windowGrid()` draws 5×6 windows on a 9×11 pitch with about 1 in 5 lit.
   - Vehicles are squashed to 96% width and 107% height with wheels 12% oversize. They get a darker lower band, one gloss stripe, window glints, and **no faces**. People and animals may have faces.
+    - The squash and oversize are applied at runtime (`STYLE` in `vehicle/art/schema.ts`), so vehicle art is drawn at true proportions.
+    - The generator (`tools/art/vehicleSvg.ts`) bakes in the other vehicle rules.
   - The far skyline is a single haze color with no detail. All the detail lives in the near layer.
 
 ## Architecture (`src/`)
@@ -36,10 +46,14 @@ Verify visual work with `npm run playtest` against a running dev server (`I95_UR
 |---|---|---|
 | Orchestration | `core/Game.ts` | Owns the scene graph, builds and tears down a trip, routes input, runs the frame loop. Keep feature logic out of it. |
 | Core services | `core/Camera.ts`, `Input.ts`, `Tween.ts`, `IdleHinter.ts`, `Ctx.ts`, `rng.ts`, `debug.ts` | `Ctx` is the service bag passed to every prop and landmark. |
-| Car | `vehicle/CarController.ts` (pure physics, unit-tested), `CarRig.ts` (view, shadow, reactions), `MiniView.ts` (the Mini drawing) | |
+| Car | `vehicle/CarController.ts` (pure physics, unit-tested, shared by every vehicle), `CarRig.ts` (view, shadow, reactions), `VehicleView.ts` (any vehicle, built from art) | Read sizes from `view.dims` (`half`, `height`, `wheels`, `roof`, `exhaust`…). No per-car magic numbers. Roof cargo goes in `view.roof`, positioned with `view.roofPoint()`. |
+| Vehicle art | `vehicle/art/`: `registry.ts` (`import.meta.glob` over `art/`), `svgDoc.ts` (layer lookup, Illustrator id normalizing, visibility split), `geometry.ts` (bboxes with transforms), `measure.ts` (anchors → `VehicleDims`), `recolor.ts` + `color.ts` (token swap, OKLCH shades), `rasterize.ts` (SVG → canvas → texture), `VehicleBuild.ts`, `validate.ts` | Pure modules are DOM-agnostic: tests and tools pass `xmlDom` (`tools/art/dom.ts`). |
+| Garage | `garage/Garage.ts` (scene and pointer handling), `GarageModel.ts` (pure brand → model → customize state, unit-tested), `Shelf.ts` (momentum chip row), `thumbs.ts` (lazy chip pictures), `garageRoom.ts` (room art) | `Game.mode` is `'garage'` or `'trip'`. In garage mode the trip `Input` is disabled and the garage owns the pointer. |
+| Art tools | `tools/art/`: `generate.ts`, `vehicleSvg.ts` (spec → SVG with style rules), `library.ts` (wheels, accessories), `protect.ts` (hash manifest guards hand edits), `validate.ts`, `library-fs.ts` | Run with `tsx`. |
+| Lab | `lab.html` + `src/lab/main.ts` | Dev only. Reference photos come from git-ignored `reference/`. |
 | World | `world/Route.ts` (pure data: route skeleton, zones, regions), `Terrain.ts`, `Road.ts`, `Scenery.ts` (parallax chunk generators), `Sky.ts`, `ChunkLayer.ts`, `PropFactory.ts` | |
 | Things | `props/` (road and farm props, `Prop` base), `signs/Signs.ts`, `landmarks/` (Home, Duckies, Charleston incl. the Ravenel Bridge and greeters) | |
-| Story | `trip/TripDirector.ts` | Leave → Travel → Arrive → Greet → iris to a fresh trip. Nothing persists. |
+| Story | `trip/TripDirector.ts` | Garage → Leave → Travel → Arrive → Greet → iris back to the garage (`endTrip`) with the same pick. Nothing persists beyond the page session. |
 | Audio | `audio/Synth.ts` (primitives), `Sfx.ts` (named sounds), `Engine.ts` (continuous hum and wind) | |
 | FX | `fx/Particles.ts` (pooled sprites, fireworks), `fx/Iris.ts` | |
 
@@ -60,13 +74,21 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
 - **Roadside set piece:** add a `PlacementKind` and a placement in `Route.ts`, write a `Prop` subclass (`hits`, `onTap`, optional `onBump` and `update`), and add a case in `world/PropFactory.ts`.
 - **Landmark:** write a `build<Name>(ctx, x0)` that returns `Prop[]` positioned relative to `x0` (see `buildDuckies`). Add a zone in `Route.ts` if it needs open road with no barrier (`isOpenRoad`), and wire it into `Game.buildTrip`.
 - **Sound:** add a method to `Sfx` built from `Synth.tone` / `Synth.noise`. Keep sounds soft, because the master bus is compressed.
+- **Vehicle:** follow `art/README.md` → "Adding a new car".
+  - Physics must stay shared (pillar 3). Flavor is only `vehicle.json` → `sound` and the art.
+  - `tests/art.test.ts` enforces the size band and validates everything in `art/`.
 - `tests/Route.test.ts` guards route invariants (markers count down 10→1, ramps clear of markers and the bridge, and so on). Extend it when you add placement rules.
 
 ## Gotchas
 
-- Pixi v8: shape calls first, then `.fill()` / `.stroke()`. A path left unfilled gets filled by the next `.fill()`. Only `Container`s may have children; never `addChild` onto a `Graphics`. Holes use `.cut()`.
+- Pixi v8: shape calls first, then `.fill()` / `.stroke()`. A path left unfilled gets filled by the next `.fill()`. Only `Container`s may have children; never `addChild` onto a `Graphics`.
+  - `.cut()` holes that extend past the outer shape triangulate badly. `Iris` uses a thick stroked ring instead.
+- Rasterized art textures:
+  - Use `ImageSource`, **not** `CanvasSource`. `CanvasSource` recomputes the pixel size as (w / resolution) × resolution and, on float round-off, resets `canvas.width`, which wipes the canvas.
+  - Pipeline canvases are created with `willReadFrequently` (CPU-backed).
+- `Tweens` drops a tween or timer that throws, so one destroyed target can't freeze the game. Still guard `destroyed` in tweens on short-lived objects (chips, garage).
 - `Tweens.wobble` saves the base rotation and scale and restores them when it finishes. Don't run your own tween on the same object's rotation or scale at the same time.
 - Game positions in landmarks are still partly absolute: Charleston uses fixed x values tied to `GREET_X` and `WORLD_END`. See the roadmap for cities.
 - Audio only starts after a user gesture (`synth.unlock()` runs on every input).
 - Deployment: every push to `main` builds and deploys to GitHub Pages (`.github/workflows/deploy.yml`, tests must pass). `vite.config.ts` uses `base: './'`, so keep every asset URL relative (no leading `/`).
-- The repo is **public**: no secrets, personal data or copyrighted reference images. `mini.jpeg` is git-ignored for that reason.
+- The repo is **public**: no secrets, personal data or copyrighted reference images. Reference photos live in git-ignored `reference/`, and `*.jpg` / `*.jpeg` are ignored everywhere.

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- i95 wheel: subaru-machined-5. Tokens: rims.base #c9ced3, rims.dark #3a3d42 -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100 100" width="100" height="100">
+  <g id="wheel">
+    <circle cx="50" cy="50" r="50" fill="#24262a"/>
+    <circle cx="50" cy="50" r="43" fill="#303338"/>
+    <circle cx="50" cy="50" r="37" fill="#3a3d42"/>
+    <path d="M51.93 40.54 L50.48 14.40 L37.67 16.60 L45.03 41.72Z" fill="#c9ced3"/>
+    <path d="M54.97 41.72 L62.33 16.60 L49.52 14.40 L48.07 40.54Z" fill="#c9ced3"/>
+    <path d="M59.59 48.91 L84.00 39.46 L77.95 27.96 L56.34 42.71Z" fill="#c9ced3"/>
+    <path d="M59.41 52.17 L85.57 51.40 L83.70 38.54 L58.40 45.24Z" fill="#c9ced3"/>
+    <path d="M54.00 58.79 L70.53 79.08 L79.60 69.77 L58.89 53.77Z" fill="#c9ced3"/>
+    <path d="M50.84 59.62 L59.66 84.26 L71.31 78.51 L57.12 56.52Z" fill="#c9ced3"/>
+    <path d="M42.88 56.52 L28.69 78.51 L40.34 84.26 L49.16 59.62Z" fill="#c9ced3"/>
+    <path d="M41.11 53.77 L20.40 69.77 L29.47 79.08 L46.00 58.79Z" fill="#c9ced3"/>
+    <path d="M41.60 45.24 L16.30 38.54 L14.43 51.40 L40.59 52.17Z" fill="#c9ced3"/>
+    <path d="M43.66 42.71 L22.05 27.96 L16.00 39.46 L40.41 48.91Z" fill="#c9ced3"/>
+    <path d="M87 50 A37 37 0 1 0 13 50 A37 37 0 1 0 87 50Z M83.5 50 A33.5 33.5 0 1 0 16.5 50 A33.5 33.5 0 1 0 83.5 50Z" fill="#c9ced3" fill-rule="evenodd"/>
+    <circle cx="50" cy="50" r="11" fill="#3a3d42"/>
+    <circle cx="50" cy="50" r="6" fill="#c9ced3"/>
+    <circle cx="34" cy="30" r="6" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
+</svg>

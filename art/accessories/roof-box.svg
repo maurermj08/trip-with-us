@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- i95 accessory: roof-box. Mount = bottom center of guide-mount. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 140 40" width="140" height="40">
+  <g id="accessory">
+    <path d="M12 36 Q8 36 6.21 32.42 L5 30 Q2 24 7.58 20.28 L16.02 14.66 Q26 8 38 7.74 L108 6.22 Q118 6 125.81 12.25 L132.05 17.24 Q138 22 135 29 L133.58 32.32 Q132 36 128 36Z" fill="#2b2d31"/>
+    <rect x="24" y="10" width="92" height="3" rx="1.5" fill="#ffffff" fill-opacity="0.35"/>
+    <rect x="10" y="26" width="120" height="4" rx="2" fill="#1d1e21"/>
+  </g>
+  <g id="guide-mount">
+    <rect x="66" y="37" width="8" height="1" rx="0.5" fill="#00b7ff" fill-opacity="0.6"/>
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "roof-box",
+    "name": "Roof box",
+    "mount": "roof",
+    "stackHeight": 35,
+    "showLayers": [
+      "opt-crossbars"
+    ]
+  },
+  {
+    "id": "bike-rack",
+    "name": "Bike on hitch rack",
+    "mount": "hitch",
+    "offset": [
+      4,
+      0
+    ]
+  },
+  {
+    "id": "black-pack",
+    "name": "Black pack",
+    "mount": "none",
+    "slots": {
+      "roof": "#1b1b1d",
+      "mirrors": "#1b1b1d",
+      "rims": "#2a2c30"
+    }
+  }
+]

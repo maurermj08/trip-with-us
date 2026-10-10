@@ -67,27 +67,42 @@ export class Tweens {
   }
 
   update(dt: number): void {
-    for (let i = this.timers.length - 1; i >= 0; i--) {
-      const tm = this.timers[i];
+    // Callbacks may clear() and replace the lists; keep iterating the arrays we started with.
+    const timers = this.timers;
+    for (let i = timers.length - 1; i >= 0; i--) {
+      const tm = timers[i];
+      if (!tm) continue;
       tm.t -= dt;
       if (tm.t <= 0) {
-        this.timers.splice(i, 1);
-        tm.fn();
+        timers.splice(i, 1);
+        try {
+          tm.fn();
+        } catch (e) {
+          console.warn('timer dropped', e);
+        }
       }
     }
     const list = this.list;
     for (let i = list.length - 1; i >= 0; i--) {
       const tw = list[i];
+      if (!tw) continue;
       if (tw.delay > 0) {
         tw.delay -= dt;
         continue;
       }
       tw.t += dt;
       const p = Math.min(1, tw.t / tw.dur);
-      tw.fn(tw.ease(p));
-      if (p >= 1) {
-        list.splice(list.indexOf(tw), 1);
-        tw.done?.();
+      try {
+        tw.fn(tw.ease(p));
+        if (p >= 1) {
+          list.splice(list.indexOf(tw), 1);
+          tw.done?.();
+        }
+      } catch (e) {
+        // One broken tween (e.g. its target was destroyed) must never freeze the game.
+        const k = list.indexOf(tw);
+        if (k >= 0) list.splice(k, 1);
+        console.warn('tween dropped', e);
       }
     }
     for (const [obj, w] of this.wobbles) {

@@ -7,7 +7,6 @@ import { contactShadow, cornerRect } from '../style/shapes';
 import { rand } from '../core/rng';
 import { RAMPS } from '../world/Route';
 import { surfaceAt } from '../world/Terrain';
-import { CAR_HALF } from '../vehicle/MiniView';
 
 // ---------- Cardboard boxes ----------
 interface Flying { g: Graphics; vx: number; vy: number; spin: number; groundY: number; done: boolean }
@@ -188,7 +187,8 @@ export class Mud extends Prop {
     this.ctx.carView.muddiness = Math.min(1, this.ctx.carView.muddiness + dt * 1.5);
     if (this.lastSplat <= 0 && car.speed > 30) {
       this.lastSplat = 0.06;
-      for (const wx of [car.x - 62, car.x + 62]) {
+      for (const w of this.ctx.carView.dims.wheels) {
+        const wx = car.x + w.x;
         this.ctx.fx.emit(this.ctx.layers.fx, { x: wx, y: -4, count: 2, shape: 'circle', tint: [P.mud, P.mudLight], speed: [100, 300], angle: [-2.9, -1.8], gravity: 1300, life: [0.4, 0.7], size: [5, 11] });
       }
       if (Math.random() < 0.08) this.ctx.sfx.squelch();
@@ -229,8 +229,9 @@ export class Rock extends Prop {
   update(dt: number): void {
     const car = this.ctx.car;
     this.cool -= dt;
-    const front = car.x + CAR_HALF - 10;
-    if (this.cool <= 0 && car.height < 30 && front > this.x - 20 && car.x - CAR_HALF < this.x && car.vx > 20) {
+    const half = this.ctx.carView.dims.half;
+    const front = car.x + half - 10;
+    if (this.cool <= 0 && car.height < 30 && front > this.x - 20 && car.x - half < this.x && car.vx > 20) {
       this.cool = 0.4;
       this.vx = car.vx * 1.25 + 120;
       this.vy = 260 + car.vx * 0.2;
@@ -347,11 +348,11 @@ export class BeachBall extends Prop {
     this.cool -= dt;
     const ground = surfaceAt(this.x);
     // Car nudges the ball when its nose reaches it.
-    const nose = car.x + CAR_HALF;
+    const nose = car.x + this.ctx.carView.dims.half;
     const carBottom = car.alt;
     const ballAlt = ground + this.alt;
     if (this.cool <= 0 && Math.abs(nose - (this.x - this.r)) < 30 + Math.max(0, car.vx - this.vx) * dt
-      && carBottom < ballAlt + this.r * 2 && car.alt + 90 > ballAlt) {
+      && carBottom < ballAlt + this.r * 2 && car.alt + this.ctx.carView.dims.height > ballAlt) {
       this.cool = 0.25;
       this.vx = Math.max(this.vx, car.vx) + 160;
       this.vy = 360 + car.speed * 0.35;

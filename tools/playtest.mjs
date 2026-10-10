@@ -12,9 +12,13 @@
 //   tapw:WX:WY      click at a world point   tapcar        click the car
 //   mdown:X:Y / mmove:X:Y / mup              manual drag
 //   shot:FILE       screenshot now
+//   pick:KEY        garage: tap a chip by key (brand:subaru, model:<id>, wheel:<id>, acc:<id>, crumb-brand)
+//   go              garage: drive out to start the trip
+// I95_GARAGE=1 starts in the garage (otherwise ?car=mini-countryman-2019 skips it).
 // Screenshots go to playtest/ (git-ignored). The final screenshot is <out.png>.
 //
-// Env: I95_URL (default http://localhost:5173), I95_W / I95_H viewport (default 1024x768),
+// Env: I95_URL (default http://localhost:5173), I95_PAGE (e.g. lab.html), I95_QUERY (extra params),
+//      I95_W / I95_H viewport (default 1024x768),
 //      I95_BROWSER path to a Chromium binary (default: installed Google Chrome).
 // Note: headless WebGL is software-rendered and often < 20fps; the game clamps dt to 1/20s,
 // so game time runs slower than wall time. Wait longer than you would on a device.
@@ -24,7 +28,9 @@ import { join } from 'node:path';
 
 const OUT = 'playtest';
 mkdirSync(OUT, { recursive: true });
-const url = (process.env.I95_URL ?? 'http://localhost:5173') + '/?debug=1';
+// The game opens in the garage; trip playtests skip it with ?car= unless I95_GARAGE is set.
+const q = [process.env.I95_QUERY, !process.env.I95_PAGE && !process.env.I95_GARAGE && !/car=/.test(process.env.I95_QUERY ?? '') ? 'car=mini-countryman-2019' : ''].filter(Boolean).join('&');
+const url = (process.env.I95_URL ?? 'http://localhost:5173') + '/' + (process.env.I95_PAGE ?? '') + '?debug=1' + (q ? '&' + q : '');
 const [, , out = 'shot.png', ...steps] = process.argv;
 
 const launch = { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] };
@@ -39,7 +45,7 @@ const logs = [];
 page.on('console', (m) => (m.type() === 'error' || m.type() === 'warning') && !m.text().includes('GL Driver') && logs.push(`${m.type()}: ${m.text()}`));
 page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
 await page.goto(url);
-await page.waitForFunction(() => window.game, null, { timeout: 15000 });
+await page.waitForFunction(() => window.game || window.lab, null, { timeout: 15000 });
 await page.waitForTimeout(800);
 
 const toScreen = (wx, wy) => page.evaluate(([x, y]) => window.game.debugToScreen(x, y), [wx, wy]);
@@ -59,6 +65,8 @@ for (const s of steps) {
       await page.mouse.click(p.x, p.y);
       break;
     }
+    case 'pick': { const ok = await page.evaluate((k) => window.game.debugPick(k), s.slice(5)); if (!ok) console.error('no chip', s); break; }
+    case 'go': await page.evaluate(() => window.game.debugGo()); break;
     case 'mdown': await page.mouse.move(+a, +b); await page.mouse.down(); break;
     case 'mmove': await page.mouse.move(+a, +b, { steps: 8 }); break;
     case 'mup': await page.mouse.up(); break;
@@ -67,6 +75,6 @@ for (const s of steps) {
   }
 }
 await page.screenshot({ path: join(OUT, out) });
-console.log(await page.evaluate(() => window.game.debugInfo()));
+console.log(await page.evaluate(() => (window.game ? window.game.debugInfo() : 'lab')));
 if (logs.length) console.log(logs.join('\n'));
 await browser.close();

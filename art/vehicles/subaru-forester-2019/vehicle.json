@@ -1,0 +1,17 @@
+{
+  "id": "subaru-forester-2019",
+  "brand": "subaru",
+  "model": "Forester",
+  "year": 2019,
+  "kind": "suv",
+  "tokens": {
+    "paint": { "base": "#b9bec4", "shades": { "dark": "#959ba2" } },
+    "mirrors": { "base": "#b8bdc4" },
+    "clad": { "base": "#2b2d30" },
+    "trim": { "base": "#c8cdd2" }
+  },
+  "paints": [{ "id": "ice-silver", "name": "Ice Silver Metallic", "swatch": "#b9bec4", "slots": {} }],
+  "wheels": { "default": "subaru-machined-5", "options": ["subaru-machined-5", "steelie"] },
+  "accessories": ["roof-box", "bike-rack", "black-pack"],
+  "sound": { "hornPitch": 0.85, "engineBase": 38 }
+}

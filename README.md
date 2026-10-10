@@ -28,6 +28,13 @@ The build uses relative asset paths (`base: './'`), so it works at `https://<use
 - `docs/ROADMAP.md`: phases, status, and code seams for upcoming work
 - `CLAUDE.md`: architecture, conventions and gotchas
 
+## Vehicles and the Garage
+
+The game opens in a **garage**: pick a brand, then a model, then wheels and accessories, and drive out the door. Vehicles are SVG art in `art/` that you can finish in Adobe Illustrator.
+
+- `npm run lab` opens the **Vehicle Lab**, a live preview with a reference-photo overlay.
+- `art/README.md` is the full guide: layers, colors, Illustrator settings, and adding a car.
+
 ## Controls (both work at once)
 
 - **Zones**: hold the right side to go, the left side to brake. Touch the top of the screen to hop (slow) or fly (fast).
@@ -37,7 +44,10 @@ The build uses relative asset paths (`base: './'`), so it works at `https://<use
 ## Layout
 
 - `src/core`: game orchestration, camera, input, tweens, idle hints
-- `src/vehicle`: car physics (`CarController`, pure and tested), `CarRig` (view and reactions), the Mini drawing
+- `src/vehicle`: car physics (`CarController`, pure and tested), `CarRig`, `VehicleView`, and the art pipeline (`src/vehicle/art`)
+- `src/garage`: the vehicle chooser
+- `art/`: vehicle, wheel, accessory and brand art (see `art/README.md`)
+- `tools/art/`: art generator and validator
 - `src/world`: route skeleton, terrain, road, parallax scenery, sky, prop factory
 - `src/props`, `src/signs`, `src/landmarks`: everything tappable or drive-through
 - `src/trip`: Leave → Travel → Arrive → Greet story

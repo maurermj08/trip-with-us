@@ -211,7 +211,8 @@ export class Suitcase extends Prop {
     this.view.children[0].visible = false;
     this.ctx.tweens.add(0.75, (p) => {
       const car = ctx.car;
-      const tx = car.x - 28, ty = -car.alt - 98;
+      const rp = ctx.carView.roofPoint();
+      const tx = car.x + rp.x, ty = -car.alt + rp.y - 6;
       const x = sx + (tx - sx) * p;
       const y = sy + (ty - sy) * p - Math.sin(p * Math.PI) * 180;
       this.view.position.set(x, y);

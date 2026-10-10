@@ -3,5 +3,9 @@ dist
 playtest
 .DS_Store
 
-# Copyrighted reference photo (drawing reference only, not for publishing)
-mini.jpeg
+# Copyrighted reference photos (drawing reference only, never publish)
+reference/
+*.jpg
+*.jpeg
+# Generator output kept beside hand-edited art for comparison
+*.generated.svg

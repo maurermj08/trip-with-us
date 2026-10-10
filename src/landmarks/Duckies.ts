@@ -235,11 +235,12 @@ class Store extends Prop {
     const car = this.ctx.car;
     const nearCar = Math.abs(car.x - sx) < 900 && !car.held;
     const tx = nearCar ? car.x : sx + rand(-60, 60);
-    const ty = nearCar ? -car.alt - 100 : sy + 40;
+    const roofY = () => -this.ctx.car.alt + this.ctx.carView.roofPoint().y - 4;
+    const ty = nearCar ? roofY() : sy + 40;
     const peak = Math.min(sy, ty) - 220;
     this.ctx.tweens.add(0.9, (p) => {
-      const x = sx + ((nearCar ? this.ctx.car.x : tx) - sx) * p;
-      const yLin = sy + ((nearCar ? -this.ctx.car.alt - 100 : ty) - sy) * p;
+      const x = sx + ((nearCar ? this.ctx.car.x + this.ctx.carView.roofPoint().x : tx) - sx) * p;
+      const yLin = sy + ((nearCar ? roofY() : ty) - sy) * p;
       bag.position.set(x, yLin + (peak - Math.min(sy, ty)) * Math.sin(p * Math.PI));
       bag.rotation = p * Math.PI * 2;
     }, {

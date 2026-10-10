@@ -1,0 +1,18 @@
+{
+  "id": "mini-countryman-2019",
+  "brand": "mini",
+  "model": "Countryman",
+  "year": 2019,
+  "kind": "suv",
+  "tokens": {
+    "paint": { "base": "#1f5f9e", "shades": { "dark": "#174a7c" } },
+    "roof": { "base": "#f7f7f4" },
+    "mirrors": { "base": "#f6f6f2" },
+    "clad": { "base": "#2a2d31" },
+    "trim": { "base": "#d5dbe1" }
+  },
+  "paints": [{ "id": "island-blue", "name": "Island Blue", "swatch": "#1f5f9e", "slots": {} }],
+  "wheels": { "default": "mini-star-spoke", "options": ["mini-star-spoke", "steelie"] },
+  "accessories": ["roof-box", "bike-rack", "black-pack"],
+  "sound": { "hornPitch": 1, "engineBase": 42 }
+}

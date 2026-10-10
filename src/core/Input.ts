@@ -42,6 +42,18 @@ export class Input {
   private pointers = new Map<number, PointerState>();
   private keys = new Set<string>();
   liftKey = false;
+  private enabled_ = true;
+
+  /** Off while another scene (the garage) owns the pointer. */
+  set enabled(on: boolean) {
+    this.enabled_ = on;
+    this.pointers.clear();
+    this.keys.clear();
+  }
+
+  get enabled(): boolean {
+    return this.enabled_;
+  }
 
   constructor(private el: HTMLElement, private host: InputHost) {
     el.addEventListener('pointerdown', this.down, { passive: false });
@@ -72,6 +84,7 @@ export class Input {
 
   private down = (e: PointerEvent): void => {
     e.preventDefault();
+    if (!this.enabled_) return;
     this.host.onAnyInput();
     const s = this.host.toDesign(e.clientX, e.clientY);
     const w = this.host.toWorld(s.x, s.y);
@@ -115,7 +128,7 @@ export class Input {
   };
 
   private keyDown = (e: KeyboardEvent): void => {
-    if (e.repeat) return;
+    if (e.repeat || !this.enabled_) return;
     const k = e.key.toLowerCase();
     if (['arrowright', 'arrowleft', 'arrowup', ' ', 'd', 'a', 'w', 'h'].includes(k)) e.preventDefault();
     this.keys.add(k);

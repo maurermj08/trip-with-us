@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>i95 Vehicle Lab</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <style>
+      :root { font: 13px/1.4 -apple-system, system-ui, sans-serif; color: #1d2430; }
+      body { margin: 0; display: grid; grid-template-columns: 1fr 320px; height: 100vh; background: #eef2f6; }
+      #stage { position: relative; overflow: hidden; }
+      #panel { overflow: auto; padding: 12px 14px; background: #fff; border-left: 1px solid #d8dee6; }
+      h1 { font-size: 15px; margin: 0 0 8px; }
+      h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #6b7685; margin: 14px 0 6px; }
+      label { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+      select, button { font: inherit; }
+      select { width: 100%; }
+      input[type=range] { flex: 1; }
+      .row { display: flex; gap: 6px; flex-wrap: wrap; }
+      button { padding: 3px 8px; border-radius: 6px; border: 1px solid #c5cdd8; background: #f6f8fa; cursor: pointer; }
+      pre { white-space: pre-wrap; font-size: 11px; background: #f6f8fa; padding: 6px; border-radius: 6px; margin: 0; }
+      .err { color: #c0392b; } .warn { color: #a8710b; } .ok { color: #1e8449; }
+      #files code { font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="panel"></div>
+    <script type="module" src="/src/lab/main.ts"></script>
+  </body>
+</html>

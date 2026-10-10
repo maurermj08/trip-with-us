@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- i95 brand badge: mini. A simplified emblem inspired by the brand (not the real logo). -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 120 60" width="120" height="60">
+  <g id="badge">
+    <path d="M6 24 L40 24 Q44 24 44 28 L44 28 Q44 32 40 32 L10 32 Q6 32 6 28Z" fill="#2a2d31"/>
+    <path d="M10 36 L40 36 Q44 36 44 39 L44 39 Q44 42 40 42 L14 42 Q10 42 10 39Z" fill="#2a2d31"/>
+    <path d="M114 24 L80 24 Q76 24 76 28 L76 28 Q76 32 80 32 L110 32 Q114 32 114 28Z" fill="#2a2d31"/>
+    <path d="M110 36 L80 36 Q76 36 76 39 L76 39 Q76 42 80 42 L106 42 Q110 42 110 39Z" fill="#2a2d31"/>
+    <circle cx="60" cy="31" r="22" fill="#2a2d31"/>
+    <circle cx="60" cy="31" r="17" fill="#ffffff"/>
+    <circle cx="60" cy="31" r="12" fill="#2a2d31"/>
+    <circle cx="55" cy="26" r="3" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
+</svg>

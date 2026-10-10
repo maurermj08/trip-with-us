@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- i95 vehicle art: mini-countryman-2019. Generated from spec.json; edit freely in Illustrator (see art/README.md). Tokens: paint.base #1f5f9e, paint.dark #174a7c, roof.base #f7f7f4, mirrors.base #f6f6f2, clad.base #2a2d31, trim.base #d5dbe1 -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 400 200" width="400" height="200">
+  <defs>
+    <clipPath id="body-clip">
+      <path d="M298.5 168.5 Q302.5 168.5 304.44 165 L306.36 161.56 Q310 155 308.4 147.67 L307.72 144.57 Q306.5 139 302 135.5 L302 135.5 Q297.5 132 291.91 130.88 L257.45 123.99 Q255 123.5 252.5 123.47 L113 122.05 Q108 122 104.14 125.18 L102.59 126.46 Q99.5 129 98.18 132.78 L94.98 141.92 Q92.5 149 93.64 156.41 L94.89 164.55 Q95.5 168.5 99.5 168.5Z"/>
+    </clipPath>
+  </defs>
+  <g id="guide-ground">
+    <rect x="0" y="179.5" width="400" height="1" rx="0" fill="#00b7ff" fill-opacity="0.6"/>
+  </g>
+  <g id="body">
+    <path d="M258.5 124 L258.5 124 L227.02 103.63 Q224.5 102 221.59 101.27 L214.93 99.61 Q212.5 99 210 99.03 L118 99.97 Q115 100 112.41 101.52 L108.65 103.73 Q106.5 105 105.77 107.39 L101.79 120.54 Q101.5 121.5 102.5 121.52Z" fill="#28323c"/>
+    <path d="M246 121.5 Q247 121.5 246.18 120.93 L224.73 105.86 Q223.5 105 222 105 L195.5 105 Q194 105 194 106.5 L194 120.5 Q194 121.5 195 121.5Z" fill="#c9e2f2"/>
+    <path d="M215.84 106.65 L223.26 106.65 L217.32 119.85 L209.9 119.85Z" fill="#ffffff" fill-opacity="0.55"/>
+    <path d="M187.5 121.5 Q188.5 121.5 188.5 120.5 L188.5 106.5 Q188.5 105 187 105 L150.5 105 Q149 105 149 106.5 L149 120.5 Q149 121.5 150 121.5Z" fill="#c9e2f2"/>
+    <path d="M166.79 106.65 L172.32 106.65 L166.38 119.85 L160.85 119.85Z" fill="#ffffff" fill-opacity="0.55"/>
+    <path d="M142.5 121.5 Q143.5 121.5 143.5 120.5 L143.5 106.5 Q143.5 105 142 105 L121 105 Q119 105 117.92 106.68 L111.81 116.24 Q111 117.5 111 119 L111 120.5 Q111 121.5 112 121.5Z" fill="#c9e2f2"/>
+    <path d="M126.69 106.65 L131.24 106.65 L125.3 119.85 L120.75 119.85Z" fill="#ffffff" fill-opacity="0.55"/>
+    <path d="M298.5 168.5 Q302.5 168.5 304.44 165 L306.36 161.56 Q310 155 308.4 147.67 L307.72 144.57 Q306.5 139 302 135.5 L302 135.5 Q297.5 132 291.91 130.88 L257.45 123.99 Q255 123.5 252.5 123.47 L113 122.05 Q108 122 104.14 125.18 L102.59 126.46 Q99.5 129 98.18 132.78 L94.98 141.92 Q92.5 149 93.64 156.41 L94.89 164.55 Q95.5 168.5 99.5 168.5Z" fill="#1f5f9e"/>
+    <g clip-path="url(#body-clip)">
+      <rect x="87.5" y="146" width="227.5" height="11.5" rx="4" fill="#174a7c"/>
+      <rect x="98.5" y="126" width="199.5" height="3" rx="1.5" fill="#ffffff" fill-opacity="0.28"/>
+      <rect x="87.5" y="158.5" width="227.5" height="20.5" rx="5" fill="#2a2d31"/>
+    </g>
+    <path d="M224.51 99.89 Q225.5 100 224.86 99.23 L221.75 95.5 Q218 91 212.14 91 L114 91 Q110 91 106.58 93.08 L100.17 96.98 Q98.5 98 99.75 99.5 L100.36 100.23 Q101 101 101.99 100.89 L110 100 L110 100 L212.5 98.5 L212.5 98.5Z" fill="#f7f7f4"/>
+    <rect x="104.5" y="91.8" width="113" height="2" rx="1" fill="#ffffff" fill-opacity="0.5"/>
+    <rect x="126.5" y="83" width="81.5" height="3" rx="1.5" fill="#d5dbe1"/>
+    <rect x="124.5" y="85" width="4" height="4" rx="1" fill="#d5dbe1"/>
+    <rect x="206" y="85" width="4" height="4" rx="1" fill="#d5dbe1"/>
+    <path d="M241 170 L241 161.5 A28.499999999999996 28.499999999999996 0 0 1 298 161.5 L298 170Z" fill="#2a2d31"/>
+    <path d="M245.5 170 L245.5 161.5 A24 24 0 0 1 293.5 161.5 L293.5 170Z" fill="#16181b"/>
+    <path d="M102 170 L102 161.5 A28.499999999999996 28.499999999999996 0 0 1 159 161.5 L159 170Z" fill="#2a2d31"/>
+    <path d="M106.5 170 L106.5 161.5 A24 24 0 0 1 154.5 161.5 L154.5 170Z" fill="#16181b"/>
+    <rect x="159" y="164" width="82" height="3.5" rx="1.75" fill="#d5dbe1"/>
+    <rect x="190.85" y="123.5" width="1.3" height="34" rx="0.6" fill="#174a7c" fill-opacity="0.7"/>
+    <rect x="145.35" y="123.5" width="1.3" height="34" rx="0.6" fill="#174a7c" fill-opacity="0.7"/>
+    <rect x="214.5" y="127.7" width="10" height="2.6" rx="1.3" fill="#d5dbe1"/>
+    <rect x="165" y="127.7" width="10" height="2.6" rx="1.3" fill="#d5dbe1"/>
+    <rect x="272.5" y="138" width="11.5" height="7" rx="2.5" fill="#2a2d31"/>
+    <rect x="274" y="140.8" width="8.5" height="1.4" rx="0.7" fill="#d5dbe1"/>
+    <rect x="242" y="120.7" width="6" height="4" rx="1.5" fill="#2a2d31"/>
+    <ellipse cx="245" cy="118" rx="6.5" ry="4.5" fill="#f6f6f2"/>
+    <circle cx="300.5" cy="141" r="7.15" fill="#d5dbe1"/>
+    <circle cx="301" cy="141" r="5.43" fill="#fff6d2"/>
+    <circle cx="299.07" cy="138.85" r="1.57" fill="#ffffff" fill-opacity="0.9"/>
+    <path d="M99.9 127 Q100 125.5 98.5 125.5 L95.5 125.5 Q94 125.5 93.9 127 L93.1 139.5 Q93 141 94.5 141 L97.5 141 Q99 141 99.1 139.5Z" fill="#e0413d"/>
+    <rect x="94.75" y="127.5" width="2" height="6.98" rx="1" fill="#ffffff" fill-opacity="0.4"/>
+    <rect x="302.5" y="152" width="5" height="3" rx="1.5" fill="#ffa62b"/>
+  </g>
+  <g id="wheel-rear">
+    <circle cx="130.5" cy="161.5" r="18.5" fill="#24262a"/>
+    <circle cx="130.5" cy="161.5" r="13.32" fill="#d5dbe1"/>
+    <circle cx="130.5" cy="161.5" r="3.7" fill="#5b636c"/>
+  </g>
+  <g id="wheel-front">
+    <circle cx="269.5" cy="161.5" r="18.5" fill="#24262a"/>
+    <circle cx="269.5" cy="161.5" r="13.32" fill="#d5dbe1"/>
+    <circle cx="269.5" cy="161.5" r="3.7" fill="#5b636c"/>
+  </g>
+  <g id="opt-crossbars">
+    <rect x="137.17" y="76.5" width="8" height="5" rx="2" fill="#1f2124"/>
+    <rect x="189.33" y="76.5" width="8" height="5" rx="2" fill="#1f2124"/>
+  </g>
+  <g id="anchors">
+    <g id="anchor-head">
+      <circle cx="300.5" cy="141" r="11.44" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+    <g id="anchor-tail">
+      <circle cx="96.5" cy="133.25" r="10.85" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+    <g id="anchor-hazard-front">
+      <circle cx="303.5" cy="152.5" r="3" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+    <g id="anchor-hazard-rear">
+      <circle cx="95.5" cy="152.5" r="3" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+    <g id="anchor-roof">
+      <rect x="126.5" y="79" width="81.5" height="2" rx="1" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+    <g id="anchor-exhaust">
+      <circle cx="95.5" cy="165.5" r="3" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+    <g id="anchor-hitch">
+      <circle cx="94.5" cy="157.5" r="3" fill="#ff00ff" fill-opacity="0.35"/>
+    </g>
+  </g>
+</svg>

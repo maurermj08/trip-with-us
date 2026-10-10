@@ -3,7 +3,7 @@ import type { Sfx } from '../audio/Sfx';
 import type { Particles } from '../fx/Particles';
 import type { Tweens } from './Tween';
 import type { CarController } from '../vehicle/CarController';
-import type { MiniView } from '../vehicle/MiniView';
+import type { VehicleView } from '../vehicle/VehicleView';
 
 /** Shared services handed to props and landmarks. */
 export interface Ctx {
@@ -11,7 +11,7 @@ export interface Ctx {
   fx: Particles;
   tweens: Tweens;
   car: CarController;
-  carView: MiniView;
+  carView: VehicleView;
   /** World-space layers (parallax factor 1). */
   layers: {
     back: Container;

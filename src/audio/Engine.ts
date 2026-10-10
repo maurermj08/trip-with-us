@@ -9,6 +9,8 @@ export class EngineSound {
   private windGain?: GainNode;
   private windFilter?: BiquadFilterNode;
   private on = false;
+  /** Idle pitch (Hz); per-vehicle flavor only. */
+  base = 42;
 
   constructor(private s: Synth) {}
 
@@ -54,7 +56,7 @@ export class EngineSound {
     const ctx = this.s.ctx!;
     const t = ctx.currentTime;
     const k = 0.08;
-    const base = 42 + speed01 * 70 + (throttle ? 8 : 0) + (airborne ? 14 : 0);
+    const base = this.base + speed01 * 70 + (throttle ? 8 : 0) + (airborne ? 14 : 0);
     this.oscA!.frequency.setTargetAtTime(base, t, k);
     this.oscB!.frequency.setTargetAtTime(base * 1.505, t, k);
     this.filter!.frequency.setTargetAtTime(220 + speed01 * 700 + (throttle ? 200 : 0), t, k);

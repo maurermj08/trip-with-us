@@ -7,7 +7,8 @@ import { P } from '../style/palette';
 import { contactShadow } from '../style/shapes';
 import { surfaceAt } from '../world/Terrain';
 import type { CarController, CarEvent } from './CarController';
-import { CAR_HALF, MiniView } from './MiniView';
+import { VehicleView } from './VehicleView';
+import type { VehicleBuild } from './art/VehicleBuild';
 
 export interface CarRigLayers {
   car: Container;
@@ -19,28 +20,32 @@ export interface CarRigLayers {
 }
 
 export class CarRig {
-  readonly view = new MiniView();
+  readonly view: VehicleView;
   private shadow = new Graphics();
   private distance = 0;
   private prevVx = 0;
   private exhaustT = 0;
   private streakT = 0;
   private beeped = false;
+  private hornPitch: number;
 
   constructor(
     readonly car: CarController,
+    build: VehicleBuild,
     private sfx: Sfx,
     private fx: Particles,
     private layers: CarRigLayers,
   ) {
+    this.view = new VehicleView(build);
+    this.hornPitch = build.def.sound?.hornPitch ?? 1;
     layers.car.addChild(this.view);
     layers.shadow.addChild(this.shadow);
   }
 
   /** Generous hit area: kids' fingers are big. */
   hitTest(wx: number, wy: number, pad = 24): boolean {
-    const c = this.car;
-    return wx > c.x - CAR_HALF - pad && wx < c.x + CAR_HALF + pad && wy > -c.alt - 100 - pad && wy < -c.alt + pad;
+    const c = this.car, d = this.view.dims;
+    return wx > c.x - d.half - pad && wx < c.x + d.half + pad && wy > -c.alt - d.height - pad && wy < -c.alt + pad;
   }
 
   /** Contact with a prop: squash, headlight flash, squeak. */
@@ -52,10 +57,11 @@ export class CarRig {
 
   /** Tapping the car: honk and a little hop. */
   honk(): void {
-    this.sfx.honk();
+    this.sfx.honk(this.hornPitch);
     this.view.flashLights();
     this.car.hop(240);
-    this.fx.emit(this.layers.fx, { x: this.car.x + 60, y: -this.car.alt - 110, count: 3, shape: 'circle', tint: [0xfff27a, P.white], speed: [60, 140], angle: [-2.2, -0.9], gravity: -40, life: [0.4, 0.7], size: [10, 16], grow: 0.3 });
+    const d = this.view.dims;
+    this.fx.emit(this.layers.fx, { x: this.car.x + d.head.x * 0.6, y: -this.car.alt - d.height - 12, count: 3, shape: 'circle', tint: [0xfff27a, P.white], speed: [60, 140], angle: [-2.2, -0.9], gravity: -40, life: [0.4, 0.7], size: [10, 16], grow: 0.3 });
   }
 
   handleEvents(events: CarEvent[]): void {
@@ -115,7 +121,8 @@ export class CarRig {
   private dust(k: number): void {
     const car = this.car;
     const gy = -surfaceAt(car.x);
-    for (const wx of [car.x - 65, car.x + 65]) {
+    for (const w of this.view.dims.wheels) {
+      const wx = car.x + w.x;
       this.fx.emit(this.layers.fx, { x: wx, y: gy - 4, count: Math.round(3 + k * 4), shape: 'circle', tint: [0xe9e0cf, 0xd8cdb8], speed: [40, 160 * k + 40], angle: [-3.0, -0.15], gravity: -30, drag: 2, life: [0.4, 0.9], size: [10, 18], grow: 1.8, alpha: 0.75 });
     }
   }
@@ -139,7 +146,7 @@ export class CarRig {
     // Contact shadow stays on the ground and shrinks with height.
     const k = Math.max(0.35, 1 - Math.max(0, car.height) / 500);
     this.shadow.clear();
-    contactShadow(this.shadow, car.x, -surfaceAt(car.x) + 1, 210 * k, 0.15 * k);
+    contactShadow(this.shadow, car.x, -surfaceAt(car.x) + 1, (this.view.dims.length + 4) * k, 0.15 * k);
 
     // Exhaust puffs scale with speed; wind streaks while flying.
     if (engineOn) {
@@ -147,7 +154,7 @@ export class CarRig {
       if (this.exhaustT <= 0) {
         this.exhaustT = throttle ? 0.07 : 0.22 - Math.min(0.12, car.speed / 6000);
         this.fx.emit(this.layers.fx, {
-          x: car.x - 102, y: -car.alt - 14, count: 1, shape: 'circle', tint: [0xe8e8e8, 0xdcdcdc], speed: [20, 50],
+          x: car.x + this.view.dims.exhaust.x, y: -car.alt + this.view.dims.exhaust.y, count: 1, shape: 'circle', tint: [0xe8e8e8, 0xdcdcdc], speed: [20, 50],
           angle: [Math.PI - 0.3, Math.PI + 0.1], vx: -car.vx * 0.15, gravity: -40, drag: 1.5, life: [0.5, 0.9], size: [8, 12], grow: 2.4, alpha: 0.7,
         });
       }
@@ -157,13 +164,14 @@ export class CarRig {
       if (this.streakT <= 0) {
         this.streakT = 0.05;
         this.fx.emit(this.layers.behind, {
-          x: car.x - 120 + Math.random() * 60, y: -car.alt - 20 - Math.random() * 70, count: 1, shape: 'streak', tint: P.white,
+          x: car.x - this.view.dims.half - 16 + Math.random() * 60, y: -car.alt - 20 - Math.random() * (this.view.dims.height - 26), count: 1, shape: 'streak', tint: P.white,
           speed: [0, 0], vx: car.vx * 0.4, gravity: 0, life: [0.25, 0.4], size: [40, 70], alpha: 0.6, spin: 0, rotate: false,
         });
       }
     }
   }
 
+  /** Destroys the view; the VehicleBuild (textures) is owned by whoever built it. */
   destroy(): void {
     this.view.destroy({ children: true });
     this.shadow.destroy();

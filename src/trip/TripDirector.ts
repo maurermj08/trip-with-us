@@ -11,7 +11,8 @@ export type Phase = 'leave' | 'travel' | 'arrive' | 'greet';
 
 export interface DirectorHost {
   startEngine(): void;
-  resetTrip(): void;
+  /** The greeting is over: iris back to the garage for a fresh trip. */
+  endTrip(): void;
   setDusk(t: number): void;
   showGoHint(): void;
 }
@@ -24,6 +25,10 @@ export class TripDirector {
   private fireworksLeft = 0;
   private fireworkT = 0;
   private resetting = false;
+
+  private get hornPitch(): number {
+    return this.ctx.carView.build.def.sound?.hornPitch ?? 1;
+  }
 
   constructor(
     private ctx: Ctx,
@@ -40,8 +45,8 @@ export class TripDirector {
     }
     if (this.phase === 'greet' && this.nextReady && !this.resetting) {
       this.resetting = true;
-      this.ctx.sfx.honk();
-      this.ctx.tweens.after(0.35, () => this.host.resetTrip());
+      this.ctx.sfx.honk(this.hornPitch);
+      this.ctx.tweens.after(0.35, () => this.host.endTrip());
       return true;
     }
     return false;
@@ -63,7 +68,7 @@ export class TripDirector {
     this.ctx.sfx.door();
     this.ctx.tweens.after(0.18, () => this.ctx.sfx.door());
     this.ctx.tweens.after(0.35, () => this.ctx.sfx.engineStart());
-    this.ctx.tweens.after(0.9, () => this.ctx.sfx.honk());
+    this.ctx.tweens.after(0.9, () => this.ctx.sfx.honk(this.hornPitch));
     this.ctx.carView.flashLights();
     this.ctx.carView.bounce(25);
     this.host.startEngine();

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "mini-star-spoke",
+    "name": "Star spoke (silver)",
+    "tokens": {
+      "rims": {
+        "base": "#d5dbe1",
+        "shades": {
+          "dark": "#5b636c"
+        }
+      }
+    }
+  },
+  {
+    "id": "subaru-machined-5",
+    "name": "Machined 5 twin-spoke",
+    "tokens": {
+      "rims": {
+        "base": "#c9ced3",
+        "shades": {
+          "dark": "#3a3d42"
+        }
+      }
+    }
+  },
+  {
+    "id": "steelie",
+    "name": "Black steelie",
+    "tokens": {
+      "rims": {
+        "base": "#3c4047",
+        "shades": {
+          "light": "#5c6168"
+        }
+      }
+    }
+  }
+]

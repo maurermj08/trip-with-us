@@ -23,10 +23,11 @@ export class Sfx {
     this.s.tone({ freq: vary(1400), dur: 0.06, type: 'sine', gain: 0.05 });
   }
 
-  honk(): void {
+  /** Car horn; `pitch` is per-vehicle flavor (bigger cars honk lower). */
+  honk(pitch = 1): void {
     for (const d of [0, 0.17]) {
-      this.s.tone({ freq: 523, dur: 0.14, type: 'square', gain: 0.07, delay: d, filter: 2200 });
-      this.s.tone({ freq: 659, dur: 0.14, type: 'square', gain: 0.06, delay: d, filter: 2200 });
+      this.s.tone({ freq: 523 * pitch, dur: 0.14, type: 'square', gain: 0.07, delay: d, filter: 2200 });
+      this.s.tone({ freq: 659 * pitch, dur: 0.14, type: 'square', gain: 0.06, delay: d, filter: 2200 });
     }
   }
 
