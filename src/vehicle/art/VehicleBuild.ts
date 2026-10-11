@@ -81,12 +81,37 @@ export async function buildVehicle(reg: ArtRegistry, choice: VehicleChoice, ppu:
       ctx.fill();
     }
   });
+  // Wheel arches in canvas px (a little larger than the oversized wheels): streaks skip them.
+  const arches = measure.wheels.map((wh) => ({
+    cx: (wh.x - bodyPos.x) * bp,
+    cy: (wh.y - bodyPos.y) * bp,
+    r: wh.r * STYLE.wheelScale * 1.22 * bp,
+  }));
   const wetC = bakeOverlay(bodyR.canvas, (ctx, w, h) => {
     ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    const pad = 5 * bp;
     const streak = (x: number, y: number, len: number, t: number) => {
-      ctx.beginPath();
-      ctx.roundRect(x, y, len, t, t / 2);
-      ctx.fill();
+      // Split the streak wherever it would cross a wheel arch.
+      let segs: [number, number][] = [[x, x + len]];
+      for (const a of arches) {
+        const near = Math.min(Math.abs(y - a.cy), Math.abs(y + t - a.cy));
+        const d = y <= a.cy && y + t >= a.cy ? 0 : near;
+        if (d >= a.r) continue;
+        const c = Math.sqrt(a.r * a.r - d * d) + pad;
+        segs = segs.flatMap(([s0, s1]): [number, number][] => {
+          if (s1 <= a.cx - c || s0 >= a.cx + c) return [[s0, s1]];
+          const out: [number, number][] = [];
+          if (s0 < a.cx - c) out.push([s0, a.cx - c]);
+          if (s1 > a.cx + c) out.push([a.cx + c, s1]);
+          return out;
+        });
+      }
+      for (const [s0, s1] of segs) {
+        if (s1 - s0 < 8 * bp) continue;
+        ctx.beginPath();
+        ctx.roundRect(s0, y, s1 - s0, t, t / 2);
+        ctx.fill();
+      }
     };
     streak(w * 0.05, h * 0.46, w * 0.88, 4 * bp);
     streak(w * 0.03, h * 0.58, w * 0.25, 2.5 * bp);

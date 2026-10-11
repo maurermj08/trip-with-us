@@ -101,6 +101,19 @@ The trip now runs **Home → Charleston → Savannah → Jacksonville → Orland
 
 **Goal:** a landmark kit. Duckies needs a polish pass; Potato World and Over the Line are parodies.
 
+**Done (2026-10-11):**
+- **Potato World is the trip's final stop.** It sits 2.6k past Orlando, after a short "World Drive" (`landmarks/PotatoWorld.ts`, `kit/rides.ts`, `kit/potatoArt.ts`).
+  - You drive through the entrance gate onto a pastel parade street.
+  - Along the street: the Spud Cups, a carousel with potato-horses, a monorail on its beam, shops and a balloon cart.
+  - The castle is at the end. The family greets you at its door, with fireworks over it.
+- **Hype on the way** (`signs/PotatoSigns.ts`):
+  - countdown signs from the Florida line (250 → 10 MI);
+  - castle, monorail and "Almost!" billboards;
+  - a NEXT EXIT gantry.
+- **Duckies polish:** a grand portico entrance with the duck badge over the doors. A plush duck can now come out of the store.
+- **Port of Savannah** (`landmarks/Port.ts`): animated, tappable gantry cranes loading a container ship. The scenery cranes animate too, using `ChunkLayer` `onTick`.
+- **Over the Line** is still to do.
+
 **Pattern:**
 - `build<Name>(ctx, x0): Prop[]`, with every piece positioned relative to `x0`. `buildDuckies` already follows it.
 - Add a zone in `Route.ts` so `isOpenRoad` drops the median barrier and the road draws a lot or sidewalk (see `Road.ts`).

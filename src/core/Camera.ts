@@ -49,7 +49,7 @@ export class Camera {
     const speed01 = Math.min(1, car.speed / CAR.maxSpeed);
     const zoomTarget = 1 - 0.12 * speed01 - 0.08 * Math.min(1, Math.max(0, car.height) / 450);
     this.zoom += (zoomTarget - this.zoom) * Math.min(1, dt * 1.5);
-    const tx = frameHome ? this.minX : car.x + Math.max(-80, Math.min(260, car.vx * 0.3));
+    const tx = frameHome ? this.minX : car.x + Math.max(-260, Math.min(260, car.vx * 0.3));
     this.x += (tx - this.x) * Math.min(1, dt * 4);
     const maxX = WORLD_END + 900 - (this.viewW - this.anchorX) / this.zoom;
     this.x = Math.max(this.minX, Math.min(maxX, this.x));

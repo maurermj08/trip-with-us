@@ -1,16 +1,19 @@
 // What sits along each leg of the trip. Positions are absolute world x.
 // Mile markers count down 100 → 1 over the whole trip, evenly spaced around special zones;
 // ramps always land between two markers.
-import { CITIES, FINAL_CITY, ZONE_LIST } from './cities';
+import { BRIDGES, CITIES, CITY_LAYOUT, ZONE_LIST } from './cities';
+
+const CITY_LEN = CITY_LAYOUT.len;
 import type { CityId, StateId } from './types';
 
 export type PlacementKind =
   | 'mile' | 'shield' | 'guide' | 'billboard' | 'welcome'
   | 'boxes' | 'puddle' | 'mud' | 'rock' | 'ramp' | 'ball'
   | 'cow' | 'fence' | 'birds'
-  | 'orange-tree' | 'crate' | 'gator' | 'oj-stand';
+  | 'orange-tree' | 'crate' | 'gator' | 'oj-stand'
+  | 'potato-countdown' | 'potato-gantry';
 
-export type BillboardDesign = 'duckies' | 'peaches' | 'oj' | 'chomp' | 'potato';
+export type BillboardDesign = 'duckies' | 'peaches' | 'oj' | 'chomp' | 'potato' | 'potato-castle' | 'potato-monorail' | 'potato-almost';
 
 export interface Placement {
   x: number;
@@ -31,7 +34,7 @@ export interface RampSpec { x: number; len: number; height: number }
 
 export const MILE_COUNT = 100;
 export const MILE_FIRST_X = 3200;
-const MILE_LAST_X = FINAL_CITY.x0 - 4400 - 1000; // just before the final bridge
+const MILE_LAST_X = BRIDGES[BRIDGES.length - 1].start - 1000; // just before the last bridge (the I-4 flyover)
 const MILE_KEEP_OUT_PAD = 400;
 
 /** Stretches markers and ramps stay out of (everything special except home). */
@@ -106,13 +109,11 @@ function buildRoute(): Placement[] {
   add(13600, 'cow');
   add(14300, 'cow');
   add(17600, 'billboard', { design: 'duckies' });
-  add(20000, 'puddle');
   add(21600, 'puddle');
-  add(23200, 'puddle');
   add(30800, 'ball');
   add(37200, 'boxes', { n: 4 });
   add(40600, 'fence', { len: 6000 });
-  add(41300, 'mud', { len: 600 });
+  add(41300, 'mud', { len: 260 });
   add(42800, 'cow');
   add(44000, 'rock');
   add(44500, 'birds');
@@ -120,7 +121,7 @@ function buildRoute(): Placement[] {
   add(49200, 'puddle');
   add(54200, 'boxes', { n: 3 });
   add(56400, 'welcome', { state: 'SC' });
-  add(58500, 'mud', { len: 400 });
+  add(58500, 'mud', { len: 260 });
   add(61000, 'rock');
   add(64200, 'guide', { city: 'charleston', exit: '221', shield: '26' });
   add(70500, 'boxes', { n: 2 });
@@ -130,21 +131,19 @@ function buildRoute(): Placement[] {
   add(87400, 'shield', { shield: '95' });
   add(88800, 'boxes', { n: 3 });
   add(90500, 'billboard', { design: 'peaches' });
-  add(94000, 'puddle');
-  add(95500, 'puddle');
+  add(94800, 'puddle');
   add(98000, 'boxes', { n: 2 });
   add(104600, 'fence', { len: 5000 });
   add(105500, 'cow');
   add(107000, 'cow');
   add(108300, 'birds');
-  add(109500, 'mud', { len: 500 });
+  add(109500, 'mud', { len: 260 });
   add(112000, 'rock');
   add(114000, 'boxes', { n: 3 });
   add(118000, 'ball');
-  add(121000, 'puddle');
-  add(122500, 'puddle');
+  add(121800, 'puddle');
   add(125500, 'boxes', { n: 4 });
-  add(130500, 'mud', { len: 400 });
+  add(130500, 'mud', { len: 260 });
   add(133000, 'rock');
   add(138400, 'fence', { len: 600 });
   add(138800, 'birds');
@@ -160,16 +159,14 @@ function buildRoute(): Placement[] {
   add(171000, 'boxes', { n: 2 });
   add(174000, 'ball');
   add(176500, 'boxes', { n: 3 });
-  add(179000, 'puddle');
-  add(180500, 'puddle');
+  add(179800, 'puddle');
   add(186500, 'rock');
   add(189000, 'billboard', { design: 'oj' });
   add(192000, 'guide', { city: 'airport', exit: '29' });
-  add(202500, 'mud', { len: 500 });
+  add(202500, 'mud', { len: 260 });
   add(205000, 'rock');
   add(207000, 'boxes', { n: 3 });
-  add(210500, 'puddle');
-  add(212000, 'puddle');
+  add(211200, 'puddle');
   add(214400, 'fence', { len: 600 });
   add(214800, 'birds');
   add(217000, 'welcome', { state: 'FL' });
@@ -180,17 +177,17 @@ function buildRoute(): Placement[] {
   add(227500, 'cow');
   add(229200, 'cow');
   add(230300, 'birds');
-  add(231500, 'mud', { len: 400 });
+  add(231500, 'mud', { len: 260 });
   add(235000, 'guide', { city: 'jacksonville', exit: '352', shield: '10' });
   add(237500, 'boxes', { n: 2 });
 
   // ---------- Leg 4: Jacksonville → Orlando ----------
   add(251400, 'shield', { shield: '95' });
   add(252500, 'boxes', { n: 2 });
+  add(253000, 'billboard', { design: 'duckies' });
   add(255000, 'ball');
-  add(257500, 'crate');
-  add(260000, 'puddle');
-  add(261500, 'puddle');
+  add(261700, 'crate');
+  add(260800, 'puddle');
   add(262600, 'fence', { len: 7000 });
   for (let x = 263000; x <= 269000; x += 750) add(x, 'orange-tree');
   add(266400, 'birds');
@@ -204,9 +201,8 @@ function buildRoute(): Placement[] {
   add(280500, 'shield', { shield: '4' });
   add(282500, 'billboard', { design: 'potato' });
   add(285000, 'boxes', { n: 3 });
-  add(287000, 'puddle');
-  add(288500, 'puddle');
-  add(293000, 'mud', { len: 400 });
+  add(287800, 'puddle');
+  add(293000, 'mud', { len: 260 });
   add(294500, 'guide', { city: 'airport', exit: '78' });
   add(306500, 'boxes', { n: 2 });
   add(308000, 'crate');
@@ -217,6 +213,13 @@ function buildRoute(): Placement[] {
   add(317000, 'boxes', { n: 2 });
   add(318500, 'guide', { city: 'downtown-orlando', exit: '83', shield: '4' });
   add(320000, 'puddle');
+
+  // ---------- Hype for the finale: Potato World billboards and the NEXT EXIT gantry ----------
+  // (all behind the road; the gantry and last billboard are on World Drive)
+  add(266000, 'billboard', { design: 'potato-castle' });
+  add(311500, 'billboard', { design: 'potato-monorail' });
+  add(cityX('orlando') + CITY_LEN + 600, 'potato-gantry');
+  add(cityX('orlando') + CITY_LEN + 1700, 'billboard', { design: 'potato-almost' });
 
   return p.sort((a, b) => a.x - b.x);
 }

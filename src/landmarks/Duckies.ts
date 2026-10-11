@@ -124,6 +124,41 @@ export class Pump extends Prop {
   }
 }
 
+/** Red-and-white striped awning with a scalloped edge; top-left at (x, y). */
+function stripedAwning(g: Graphics, x: number, y: number, w: number, h: number, stripes: number): void {
+  const sw = w / stripes;
+  for (let k = 0; k < stripes; k++) {
+    const c = k % 2 ? P.white : P.duckiesRed;
+    g.rect(x + k * sw, y, sw + 0.5, h).fill(c);
+    g.circle(x + k * sw + sw / 2, y + h, sw / 2).fill(c);
+  }
+  g.roundRect(x - 4, y - 5, w + 8, 7, 3).fill(P.duckiesRedDark);
+  g.rect(x + w - w * 0.28, y, w * 0.28, h).fill({ color: P.black, alpha: 0.06 });
+}
+
+/** A cuddly duck plush (softer and rounder than the mascot, with a ribbon bow); feet at (0, 0). */
+export function drawPlush(g: Graphics): Graphics {
+  g.ellipse(0, -2, 18, 4).fill({ color: P.black, alpha: 0.12 });
+  // body and a stubby wing
+  g.ellipse(-2, -14, 19, 15).fill(P.duckYellow);
+  g.ellipse(-8, -13, 9, 7).fill(P.duckYellowDark);
+  // head
+  g.circle(4, -34, 13).fill(P.duckYellow);
+  g.circle(0, -39, 4).fill({ color: P.white, alpha: 0.35 });
+  // soft rounded bill and a sleepy-happy eye
+  g.roundRect(13, -35, 13, 8, 4).fill(P.duckOrange);
+  g.circle(9, -37, 2.2).fill(0x1b1b1b);
+  g.circle(5, -31, 3).fill({ color: 0xff8a7a, alpha: 0.5 });
+  // ribbon bow at the neck
+  g.poly([4, -22, -7, -27, -7, -17]).fill(0xe9637a);
+  g.poly([4, -22, 15, -27, 15, -17]).fill(0xe9637a);
+  g.circle(4, -22, 3.2).fill(0xd94f68);
+  // little tag on the side
+  g.roundRect(-20, -12, 7, 9, 2).fill(P.white);
+  g.circle(-16.5, -9, 1.6).fill(P.duckiesRed);
+  return g;
+}
+
 export class Store extends Prop {
   private door = new Container();
   private doorL = new Graphics();
@@ -132,58 +167,117 @@ export class Store extends Prop {
   private open = false;
   static readonly W = 1300;
   static readonly H = 230;
+  /** The grand entrance portico in the middle of the front. */
+  static readonly PORCH_W = 320;
+  static readonly PORCH_H = 330;
   private doorX: number;
 
   constructor(ctx: Ctx, x: number) {
-    super(ctx, x, LOT - 36);
+    super(ctx, x, LOT - 30); // sits just inside the lot's back edge (no gap)
     this.layer = 'back';
     const W = Store.W, H = Store.H;
+    const cream = 0xecd9b2, creamShade = 0xdcc69c;
     const g = new Graphics();
     contactShadow(g, W / 2, 0, W * 1.02, 0.12);
-    block(g, 0, -H, W, H, 0xecd9b2, { landmark: true, shade: 0xdcc69c });
+    block(g, 0, -H, W, H, cream, { landmark: true, shade: creamShade });
     // stone base and red trim
     g.roundRect(0, -36, W, 36, 4).fill(0xc9b38c);
     g.rect(0, -H + 10, W, 26).fill(P.duckiesRed);
     g.rect(0, -H + 36, W, 6).fill(P.duckYellow);
-    // windows
+    // windows, each with a little striped awning
     const rng = makeRng(42);
-    for (const wx of [60, 300, 820, 1060]) {
+    for (const wx of [60, 290, 830, 1060]) {
       g.roundRect(wx, -150, 180, 90, 6).fill(0xbfe0f2);
       g.poly([wx + 30, -150, wx + 60, -150, wx + 20, -60, wx - 10 + 10, -60]).fill({ color: P.white, alpha: 0.4 });
       windowGrid(g, wx + 10, -142, 160, 20, rng, { lit: 0.5 });
+      g.roundRect(wx - 8, -60, 196, 8, 3).fill(0xd8c7a3);
+      stripedAwning(g, wx - 10, -176, 200, 22, 8);
     }
     this.view.addChild(g);
 
-    // big logo on the parapet
-    const lg = new Graphics();
-    lg.circle(0, 0, 70).fill(P.duckiesRed);
-    lg.circle(0, 0, 62).fill(0xfff4cf);
-    const duck = new Graphics();
-    drawDuck(duck, 0.62);
-    duck.position.set(-4, 6);
-    this.logo.addChild(lg, duck);
-    this.logo.position.set(W / 2, -H - 20);
-    this.view.addChild(this.logo);
-    const name = signText('DUCKIES', 22, P.white, '900');
-    name.position.set(W / 2 - 250, -H + 23);
-    const name2 = signText('DUCKIES', 22, P.white, '900');
-    name2.position.set(W / 2 + 250, -H + 23);
-    this.view.addChild(name, name2);
+    // ---- the grand entrance portico, centered and taller than the parapet ----
+    const cx = W / 2;
+    const PW = Store.PORCH_W, PH = Store.PORCH_H;
+    const pg = new Graphics();
+    contactShadow(pg, cx, 0, PW * 1.15, 0.1);
+    block(pg, cx - PW / 2, -PH, PW, PH, 0xf3e3c0, { landmark: true, shade: 0xe3cfa6 });
+    // red arched gable with yellow trim
+    const gx0 = cx - PW / 2 - 16, gx1 = cx + PW / 2 + 16, gy = -PH + 6;
+    pg.moveTo(gx0, gy).quadraticCurveTo(cx, -PH - 120, gx1, gy).quadraticCurveTo(gx1 + 4, gy + 14, gx1 - 8, gy + 14)
+      .lineTo(gx0 + 8, gy + 14).quadraticCurveTo(gx0 - 4, gy + 14, gx0, gy).fill(P.duckYellow);
+    pg.moveTo(gx0 + 14, gy + 2).quadraticCurveTo(cx, -PH - 98, gx1 - 14, gy + 2).closePath().fill(P.duckiesRed);
+    pg.moveTo(cx + 40, -PH - 40).quadraticCurveTo(cx + PW * 0.32, -PH - 22, gx1 - 14, gy + 2).lineTo(cx + 40, gy + 2).closePath().fill(P.duckiesRedDark);
+    pg.circle(cx, -PH - 66, 9).fill(P.duckYellow);
+    // cornice band under the gable
+    pg.roundRect(cx - PW / 2 - 10, -PH + 14, PW + 20, 14, 5).fill(P.duckYellow);
+    pg.roundRect(cx - PW / 2 - 10, -PH + 14, PW + 20, 3, 1.5).fill({ color: P.white, alpha: 0.5 });
+    // columns with capitals and bases
+    for (const colX of [cx - PW / 2 + 22, cx + PW / 2 - 22]) {
+      pg.roundRect(colX - 13, -PH + 34, 26, PH - 44, 6).fill(P.white);
+      pg.rect(colX + 13 - 26 * 0.28, -PH + 40, 26 * 0.28 - 2, PH - 56).fill({ color: P.black, alpha: 0.06 });
+      pg.roundRect(colX - 18, -PH + 28, 36, 12, 4).fill(0xf7f1e3);
+      pg.roundRect(colX - 18, -16, 36, 14, 4).fill(0xe8dcc3);
+    }
+    // door surround: warm glow and transom fan light
+    pg.roundRect(cx - 84, -186, 168, 186, 8).fill(0x8a4b32);
+    pg.moveTo(cx - 76, -150).quadraticCurveTo(cx, -212, cx + 76, -150).closePath().fill(0xfff2c6);
+    for (const k of [-2, -1, 0, 1, 2]) pg.moveTo(cx, -150).lineTo(cx + k * 30, -150 - (36 - Math.abs(k) * 6)).stroke({ width: 3, color: 0x8a4b32, cap: 'round' });
+    pg.roundRect(cx - 76, -152, 152, 4, 2).fill(0x8a4b32);
+    // scalloped awning over the doors
+    stripedAwning(pg, cx - 100, -232, 200, 26, 7);
+    // planters with round shrubs and flowers
+    for (const px of [cx - PW / 2 - 52, cx + PW / 2 + 52]) {
+      contactShadow(pg, px, 0, 70);
+      pg.roundRect(px - 30, -34, 60, 34, 6).fill(P.duckiesRed);
+      pg.roundRect(px - 30, -34, 60, 6, 3).fill(P.duckiesRedDark);
+      pg.circle(px - 12, -46, 20).fill(0x4f9a4a);
+      pg.circle(px + 12, -48, 22).fill(0x5aaa52);
+      pg.circle(px, -60, 18).fill(0x5aaa52);
+      for (const [fx, fy] of [[-14, -54], [8, -62], [16, -44], [-2, -42]]) pg.circle(px + fx, fy, 5).fill(P.duckYellow);
+    }
+    // welcome mat
+    pg.roundRect(cx - 70, -6, 140, 9, 4).fill(P.duckYellow);
+    pg.roundRect(cx - 60, -4, 120, 3, 1.5).fill(P.duckiesRed);
+    this.view.addChild(pg);
 
-    // double glass door
-    this.doorX = W / 2;
+    // the big duck badge, mounted on the portico right over the doors
+    const lg = new Graphics();
+    lg.circle(0, 0, 66).fill(P.duckYellow);
+    lg.circle(0, 0, 60).fill(P.duckiesRed);
+    lg.circle(0, 0, 53).fill(0xfff4cf);
+    lg.circle(-18, -22, 12).fill({ color: P.white, alpha: 0.35 });
+    const duck = new Graphics();
+    drawDuck(duck, 0.56);
+    duck.position.set(-4, 4);
+    this.logo.addChild(lg, duck);
+    this.logo.position.set(cx, -PH + 8);
+    this.view.addChild(this.logo);
+
+    // the two name panels, symmetric about the entrance
+    for (const side of [-1, 1]) {
+      const nx = cx + side * 330;
+      const name = signText('DUCKIES', 22, P.white, '900');
+      name.position.set(nx, -H + 23);
+      this.view.addChild(name);
+    }
+
+    // wide double glass doors (they slide apart when tapped)
+    this.doorX = cx;
     const frame = new Graphics();
-    frame.roundRect(-58, -126, 116, 126, 5).fill(0x3b4148);
-    frame.roundRect(-52, -120, 104, 120, 4).fill(0xfff2c6);
-    this.doorL.roundRect(-52, -120, 52, 120, 3).fill(0x9fcbe2);
-    this.doorL.roundRect(-46, -112, 10, 90, 4).fill({ color: P.white, alpha: 0.4 });
-    this.doorR.roundRect(0, -120, 52, 120, 3).fill(0x9fcbe2);
-    this.doorR.roundRect(8, -112, 10, 90, 4).fill({ color: P.white, alpha: 0.4 });
+    frame.roundRect(-76, -146, 152, 146, 5).fill(0x3b4148);
+    frame.roundRect(-70, -140, 140, 140, 4).fill(0xfff2c6);
+    for (const [d, sx] of [[this.doorL, -1], [this.doorR, 1]] as const) {
+      const x0 = sx < 0 ? -70 : 0;
+      d.roundRect(x0, -140, 70, 140, 3).fill(0x3b4148);
+      d.roundRect(x0 + 5, -134, 60, 130, 3).fill(0x9fcbe2);
+      d.roundRect(x0 + 11, -126, 10, 100, 4).fill({ color: P.white, alpha: 0.4 });
+      d.roundRect(sx < 0 ? -12 : 6, -80, 6, 30, 3).fill(0xd9a62c);
+    }
     this.door.addChild(frame, this.doorL, this.doorR);
     this.door.position.set(this.doorX, 0);
     this.view.addChild(this.door);
 
-    this.hits = [{ x: 0, y: -H - 90, w: W, h: H + 90 }];
+    this.hits = [{ x: 0, y: -PH - 120, w: W, h: PH + 120 }];
     this.extent = [-300, W + 300];
   }
 
@@ -191,9 +285,9 @@ export class Store extends Prop {
     return this.door;
   }
 
-  onTap(wx: number): void {
-    const lx = wx - this.view.x;
-    if (Math.abs(lx - this.doorX) < 90) this.openDoor();
+  onTap(wx: number, wy: number): void {
+    const lx = wx - this.view.x, ly = wy - this.view.y;
+    if (Math.abs(lx - this.doorX) < 100 && ly > -210) this.openDoor();
     else {
       this.ctx.sfx.quack();
       this.ctx.tweens.wobble(this.logo, 0.15, 0.8, 0.1);
@@ -205,29 +299,34 @@ export class Store extends Prop {
     this.open = true;
     this.ctx.sfx.ding();
     this.ctx.tweens.add(0.35, (p) => {
-      this.doorL.x = -48 * p;
-      this.doorR.x = 48 * p;
+      this.doorL.x = -62 * p;
+      this.doorR.x = 62 * p;
     }, { ease: ease.outQuad });
     this.ctx.tweens.after(0.4, () => this.tossSnack());
     this.ctx.tweens.after(1.6, () => {
       this.ctx.sfx.door();
       this.ctx.tweens.add(0.35, (p) => {
-        this.doorL.x = -48 * (1 - p);
-        this.doorR.x = 48 * (1 - p);
+        this.doorL.x = -62 * (1 - p);
+        this.doorR.x = 62 * (1 - p);
       }, { ease: ease.outQuad, done: () => (this.open = false) });
     });
   }
 
   private tossSnack(): void {
     const bag = new Container();
-    const g = new Graphics();
-    const color = [0xe94b3c, 0x2f80d1, 0xf7a23b, 0x4caf50][Math.floor(Math.random() * 4)];
-    g.roundRect(-14, -36, 28, 36, 5).fill(color);
-    g.roundRect(-14, -36, 28, 6, 3).fill(darken(color, 0.2));
-    const d = new Graphics();
-    drawDuck(d, 0.12);
-    d.position.set(0, -16);
-    bag.addChild(g, d);
+    if (Math.random() < 0.25) {
+      // Sometimes it's a cuddly duck plush instead of a snack bag.
+      bag.addChild(drawPlush(new Graphics()));
+    } else {
+      const g = new Graphics();
+      const color = [0xe94b3c, 0x2f80d1, 0xf7a23b, 0x4caf50][Math.floor(Math.random() * 4)];
+      g.roundRect(-14, -36, 28, 36, 5).fill(color);
+      g.roundRect(-14, -36, 28, 6, 3).fill(darken(color, 0.2));
+      const d = new Graphics();
+      drawDuck(d, 0.12);
+      d.position.set(0, -16);
+      bag.addChild(g, d);
+    }
     const sx = this.view.x + this.doorX, sy = this.view.y - 10;
     bag.position.set(sx, sy);
     this.ctx.layers.fx.addChild(bag);
@@ -248,7 +347,9 @@ export class Store extends Prop {
         bag.rotation = 0;
         if (nearCar && this.ctx.carView.roof.children.length < 5) {
           bag.removeFromParent();
-          bag.position.set(30 + this.ctx.carView.roof.children.length * 4, 0);
+          // Line goodies up beside the suitcase (front, back, front…) so they stay visible.
+          const k = this.ctx.carView.roof.children.length - 1;
+          bag.position.set((k % 2 ? -1 : 1) * (48 + Math.floor(Math.max(0, k) / 2) * 22), 0);
           this.ctx.carView.roof.addChild(bag);
           this.ctx.sfx.boing(1.4);
           this.ctx.carView.bounce(40);
@@ -265,7 +366,7 @@ export class Store extends Prop {
 export class DuckStatue extends Prop {
   private duck = new Container();
   constructor(ctx: Ctx, x: number) {
-    super(ctx, x, LOT - 36);
+    super(ctx, x, LOT - 30); // sits just inside the lot's back edge (no gap)
     this.layer = 'back';
     const g = new Graphics();
     contactShadow(g, 0, 0, 180);

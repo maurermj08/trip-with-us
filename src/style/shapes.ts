@@ -176,15 +176,53 @@ export function liveOak(g: Graphics, x: number, y: number, size: number): Graphi
 }
 
 /** Fluffy cloud of overlapping circles. */
+/**
+ * A puffy cloud drawn as ONE outline (the union of a rounded base and a row of puffs), so it
+ * stays a single flat shape even when the cloud layer is semi-transparent.
+ */
 export function cloud(g: Graphics, x: number, y: number, w: number, rng: Rng): Graphics {
   const n = 4 + Math.floor(rng() * 3);
   const h = w * 0.28;
-  g.roundRect(x - w / 2, y - h * 0.5, w, h * 0.6, h * 0.3).fill(P.cloud);
+  const puffs: { cx: number; cy: number; r: number }[] = [];
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n;
     const r = h * (0.45 + Math.sin(t * Math.PI) * 0.5) * (0.8 + rng() * 0.3);
-    g.circle(x - w / 2 + t * w, y - h * 0.4 - r * 0.3, r).fill(P.cloud);
+    puffs.push({ cx: x - w / 2 + t * w, cy: y - h * 0.4 - r * 0.3, r });
   }
+  // The base: a rounded rect (corner radius rr).
+  const bx0 = x - w / 2, bx1 = x + w / 2, by0 = y - h * 0.5, by1 = y + h * 0.1, rr = h * 0.3;
+  const span = (px: number): [number, number] | null => {
+    let top = Infinity, bot = -Infinity;
+    if (px >= bx0 && px <= bx1) {
+      const dx = Math.max(bx0 + rr - px, px - (bx1 - rr), 0);
+      const inset = dx > 0 ? rr - Math.sqrt(Math.max(0, rr * rr - dx * dx)) : 0;
+      top = by0 + inset;
+      bot = by1 - inset;
+    }
+    for (const p of puffs) {
+      const dx = px - p.cx;
+      if (Math.abs(dx) >= p.r) continue;
+      const d = Math.sqrt(p.r * p.r - dx * dx);
+      top = Math.min(top, p.cy - d);
+      bot = Math.max(bot, p.cy + d);
+    }
+    return top < bot ? [top, bot] : null;
+  };
+  const minX = Math.min(bx0, ...puffs.map((p) => p.cx - p.r));
+  const maxX = Math.max(bx1, ...puffs.map((p) => p.cx + p.r));
+  const steps = 72;
+  const tops: number[] = [];
+  const bots: number[] = [];
+  for (let k = 0; k <= steps; k++) {
+    // Ease the samples toward the ends, where the outline curves fastest.
+    const t = 0.5 - 0.5 * Math.cos((k / steps) * Math.PI);
+    const px = minX + 0.001 + (maxX - minX - 0.002) * t;
+    const s = span(px);
+    if (!s) continue;
+    tops.push(px, s[0]);
+    bots.unshift(px, s[1]);
+  }
+  g.poly([...tops, ...bots]).fill(P.cloud);
   return g;
 }
 

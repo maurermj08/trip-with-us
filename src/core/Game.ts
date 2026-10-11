@@ -17,7 +17,7 @@ import { buildVehicle, pixelsPerUnit, type VehicleBuild } from '../vehicle/art/V
 import type { VehicleChoice } from '../vehicle/art/schema';
 import { art } from '../vehicle/art/registry';
 import { surfaceAt } from '../world/Terrain';
-import { AIRPORTS, BRIDGES, CAR_START_X, CITIES, FINAL_CITY, ROUTE, WORLD_END, WORLD_START, timeOfDay } from '../world/Route';
+import { AIRPORTS, BRIDGES, CAR_START_X, CITIES, DUCKIES_STOPS, FINAL_CITY, ROUTE, STOP_X, WORLD_START, timeOfDay } from '../world/Route';
 import type { ChunkLayer } from '../world/ChunkLayer';
 import { cloudLayer, farLayer, foregroundLayer, nearLayer, skylineLayer } from '../world/Scenery';
 import { roadLayer } from '../world/Road';
@@ -26,6 +26,8 @@ import { createProp } from '../world/PropFactory';
 import type { Prop } from '../props/Prop';
 import { buildHome } from '../landmarks/Home';
 import { buildDuckies } from '../landmarks/Duckies';
+import { buildPort } from '../landmarks/Port';
+import { buildFishingBoats } from '../landmarks/FishingBoats';
 import { buildBridge } from '../landmarks/bridges';
 import { CITY_BUILDERS } from '../landmarks/cities';
 import { buildAirport } from '../landmarks/Airport';
@@ -194,8 +196,9 @@ export class Game implements InputHost {
 
   private buildTrip(): void {
     const L = this.layers;
-    this.car = new CarController(surfaceAt, WORLD_START + 120, WORLD_END, CAR_START_X);
     const vehicle = this.vehicle!;
+    // The trip ends at the white stop line by the castle: the car's front bumper stops on it.
+    this.car = new CarController(surfaceAt, WORLD_START + 120, STOP_X - vehicle.dims.half, CAR_START_X);
     this.rig = new CarRig(this.car, vehicle, this.sfx, this.fx, { car: L.car, shadow: L.shadow, fx: L.fx, behind: L.mid });
     this.engine.base = vehicle.def.sound?.engineBase ?? 42;
 
@@ -218,7 +221,9 @@ export class Game implements InputHost {
     this.props = [
       ...ROUTE.map((p) => createProp(ctx, p)),
       ...home.props,
-      ...buildDuckies(ctx),
+      ...DUCKIES_STOPS.flatMap((x0) => buildDuckies(ctx, x0)),
+      ...buildPort(ctx),
+      ...buildFishingBoats(ctx),
       ...BRIDGES.flatMap((b) => buildBridge(ctx, b)),
       ...cities.flatMap((c) => c.set.props),
       ...AIRPORTS.flatMap((a) => buildAirport(ctx, a)),
@@ -361,7 +366,7 @@ export class Game implements InputHost {
     const car = this.car;
     const inp = this.input.state();
     if (inp.throttle) this.director.onThrottle();
-    const drive = this.busy ? { throttle: false, brake: true, lift: false } : inp;
+    const drive = this.busy ? { throttle: false, brake: true, reverse: false, lift: false } : inp;
     const hold = this.busy ? null : this.input.hold();
     this.rig.handleEvents(car.step(dt, { ...drive, hold }));
 
@@ -423,6 +428,7 @@ export class Game implements InputHost {
       const d = l === this.clouds ? drift : 0;
       l.position.set(-cam.x * f - d, -cam.y * f);
       l.updateChunks(cam.x + d / f, cam.left, cam.right);
+      l.tick(dt);
     }
     // The road lives inside the world container (factor 1), which carries the offset.
     this.road.updateChunks(cam.x, cam.left, cam.right);

@@ -68,7 +68,7 @@ Open it by going to the `/dev/` path: `http://localhost:5173/dev/` locally, and 
 | Art tools | `tools/art/`: `generate.ts`, `vehicleSvg.ts` (spec → SVG with style rules), `library.ts` (wheels, accessories), `protect.ts` (hash manifest guards hand edits), `validate.ts`, `library-fs.ts` | Run with `tsx`. |
 | Dev sandbox | `dev/index.html` + `src/dev/` | Vehicle items include the old Lab tools: reference overlay (local only, from git-ignored `reference/`), anchors, recolor test, validation. |
 | World | `world/trip/` (pure trip data: `cities.ts` bridges/cities/airports/zones, `legs.ts` markers/ramps/placements, `regions.ts` regions/skyline/time of day), `world/Route.ts` (facade + zone helpers), `Terrain.ts`, `Road.ts`, `Scenery.ts` (parallax chunk generators), `Sky.ts`, `ChunkLayer.ts`, `PropFactory.ts` | |
-| Things | `props/` (road, farm and Florida props, `Prop` base), `signs/Signs.ts` (parameterized), `landmarks/` (Home, Duckies, `Charleston`/`Savannah`/`Jacksonville`/`Orlando`, `Airport`), `landmarks/kit/` (shared city parts + `arrival.ts`), `landmarks/bridges/` (one builder per `BridgeSpec`), `landmarks/cities.ts` (`CITY_BUILDERS`) | |
+| Things | `props/` (road, farm and Florida props, `Prop` base), `signs/Signs.ts` (parameterized), `landmarks/` (Home, Duckies, `Port`, `Charleston`/`Savannah`/`Jacksonville`/`Orlando`, `Airport`, `PotatoWorld` (the final stop)), `signs/PotatoSigns.ts`, `landmarks/kit/` (shared city parts + `arrival.ts`), `landmarks/bridges/` (one builder per `BridgeSpec`), `landmarks/cities.ts` (`CITY_BUILDERS`) | |
 | Story | `trip/TripDirector.ts` | Garage → Leave → Travel → Arrive → Greet → iris back to the garage (`endTrip`) with the same pick. Nothing persists beyond the page session. |
 | Audio | `audio/Synth.ts` (primitives), `Sfx.ts` (named sounds), `Engine.ts` (continuous hum and wind) | |
 | FX | `fx/Particles.ts` (pooled sprites, fireworks), `fx/Iris.ts` | |
@@ -108,6 +108,7 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
   - Use `ImageSource`, **not** `CanvasSource`. `CanvasSource` recomputes the pixel size as (w / resolution) × resolution and, on float round-off, resets `canvas.width`, which wipes the canvas.
   - Pipeline canvases are created with `willReadFrequently` (CPU-backed).
 - `Tweens` drops a tween or timer that throws, so one destroyed target can't freeze the game. Still guard `destroyed` in tweens on short-lived objects (chips, garage).
+- A scenery chunk can animate: set `onTick(dt)` on the container its builder returns (`ChunkLayer.tick`, called every frame). Keep rng consumption unchanged when adding animated parts, so layouts stay deterministic.
 - `Tweens.wobble` saves the base rotation and scale and restores them when it finishes. Don't run your own tween on the same object's rotation or scale at the same time.
 - Landmark positions are relative to their city's `x0`. The arrival (greeters at `x0 + CITY_LAYOUT.greeters`, end park at `WORLD_END`) comes from the final city.
 - Audio only starts after a user gesture (`synth.unlock()` runs on every input).

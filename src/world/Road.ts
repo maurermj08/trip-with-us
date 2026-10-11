@@ -23,6 +23,33 @@ function spanAt(x: number): BridgeSpec | null {
 }
 const underBridge = (x: number) => spanAt(x) !== null;
 
+/** The St. Johns (Main Street) shoreline: a sandy curve from the span's start, bowing toward the
+ * viewer and to the left. Sampled once; `shoreY(x)` gives the curve's y over [start - 300, start]. */
+const SHORE = (() => {
+  const b = BRIDGES.find((br) => br.id === 'main-street');
+  if (!b) return null;
+  const s0 = b.span[0];
+  const pts: [number, number][] = [];
+  for (let k = 0; k <= 32; k++) {
+    const t = k / 32;
+    pts.push([
+      (1 - t) * (1 - t) * s0 + 2 * (1 - t) * t * (s0 - 30) + t * t * (s0 - 300),
+      (1 - t) * (1 - t) * WATER_Y + 2 * (1 - t) * t * (WATER_Y + 150) + t * t * (WATER_Y + 360),
+    ]);
+  }
+  return { s0, pts };
+})();
+function shoreY(x: number): number | null {
+  if (!SHORE || x > SHORE.s0 + STEP || x < SHORE.s0 - 300) return null;
+  if (x >= SHORE.s0) return WATER_Y; // the ground segment that straddles the span start
+  const p = SHORE.pts;
+  for (let k = 0; k < p.length - 1; k++) {
+    const [ax, ay] = p[k], [bx, by] = p[k + 1];
+    if (x <= ax && x >= bx) return ay + ((ax - x) / (ax - bx || 1)) * (by - ay);
+  }
+  return null;
+}
+
 /** Far-side strip colors for each open-road surface: [fill, curb, height]. */
 const SURFACE: Record<NonNullable<ZoneSpec['surface']>, [number, number, number]> = {
   sidewalk: [P.sidewalk, P.curb, 16],
@@ -30,6 +57,7 @@ const SURFACE: Record<NonNullable<ZoneSpec['surface']>, [number, number, number]
   cobble: [0x9b9184, 0xb9ad9c, 18],
   riverwalk: [0xe6e0d2, 0xd2cab6, 18],
   pavers: [0xc98f6c, 0xe2b79a, 18],
+  parade: [0xf3c6c9, 0xfbe3c4, 20],
 };
 
 export function roadLayer(): ChunkLayer {
@@ -54,7 +82,35 @@ export function roadLayer(): ChunkLayer {
         g.rect(a, WATER_Y + 6, b - a + 0.5, 22).fill(0x8a8f96);
         g.rect(a, WATER_Y + 16, b - a + 0.5, 2).fill({ color: P.white, alpha: 0.6 });
       } else {
-        g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, 4000, a, 4000]).fill(P.grassNear);
+        const ya = shoreY(a), yb = shoreY(b);
+        if (ya !== null && yb !== null) {
+          // the bank above the shoreline, the river below it
+          g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, yb, a, ya]).fill(P.grassNear);
+          g.poly([a, ya, b + 0.5, yb, b + 0.5, 4000, a, 4000]).fill(P.water);
+        } else {
+          g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, 4000, a, 4000]).fill(P.grassNear);
+        }
+      }
+    }
+    // Main Street (St. Johns) crossing: a sandy rim along the curved shoreline (the ground pass
+    // above already put grass above the curve and water below it).
+    for (const br of BRIDGES) {
+      if (br.id !== 'main-street' || !SHORE) continue;
+      const s0 = br.span[0];
+      if (s0 + 20 >= x0 && s0 - 320 <= x0 + W) {
+        const curve = SHORE.pts;
+        const sand: number[] = [];
+        for (const [cx, cy] of curve) sand.push(cx, cy);
+        for (let k = curve.length - 1; k >= 0; k--) sand.push(curve[k][0] - 14, curve[k][1]);
+        g.poly(sand).fill(0xe6d7a6);
+        for (let k = 0; k < curve.length; k += 4) g.roundRect(curve[k][0] + 10, curve[k][1] + 4, 26, 3, 1.5).fill({ color: P.white, alpha: 0.45 });
+      }
+      // At the far end the bank slopes up from the water to where the deck lands.
+      const s1 = br.span[1];
+      if (s1 + 200 >= x0 && s1 - 20 <= x0 + W) {
+        const top = h(s1) + ROAD_NEAR + 16;
+        g.poly([s1 - 1, top, s1 + 170, WATER_Y, s1 - 1, WATER_Y]).fill(P.water);
+        g.poly([s1 - 1, top, s1 + 170, WATER_Y, s1 + 184, WATER_Y, s1 + 13, top]).fill(0xe6d7a6);
       }
     }
     for (const br of BRIDGES) {
@@ -65,10 +121,12 @@ export function roadLayer(): ChunkLayer {
           if (spanAt(sx) === br) g.roundRect(sx, WATER_Y + range(rng, 10, 200), range(rng, 30, 80), 4, 2).fill({ color: P.white, alpha: 0.5 });
         }
       }
-      // Piers (steel-blue on the lift bridge, round columns under the flyover).
-      const pier = br.kind === 'lift' ? 0x6f86a3 : 0xd2d6db;
+      // Piers (round columns under the flyover).
+      const pier = 0xd2d6db;
       for (let x = Math.ceil(x0 / br.pierStep) * br.pierStep; x < x0 + W; x += br.pierStep) {
         if (x <= br.start || x >= br.end) continue;
+        // (the St. Johns crossing's piers stand only in the water, never on the banks)
+        if (br.id === 'main-street' && spanAt(x) !== br) continue;
         const top = h(x) + ROAD_NEAR + 14;
         if (top < WATER_Y - 10) {
           const w = br.kind === 'flyover' ? 26 : 32;
@@ -104,7 +162,7 @@ export function roadLayer(): ChunkLayer {
       const [fill, curb, hh] = SURFACE[z.surface ?? 'sidewalk'];
       g.rect(a, h(a) + ROAD_FAR - hh, b - a + 0.5, hh).fill(fill);
       g.rect(a, h(a) + ROAD_FAR - 4, b - a + 0.5, 4).fill(curb);
-      if (z.surface === 'cobble' || z.surface === 'pavers') {
+      if (z.surface === 'cobble' || z.surface === 'pavers' || z.surface === 'parade') {
         for (let cx = a; cx < b; cx += 10) g.rect(cx, h(a) + ROAD_FAR - hh + 6, 1, hh - 10).fill({ color: P.black, alpha: 0.06 });
       }
     }

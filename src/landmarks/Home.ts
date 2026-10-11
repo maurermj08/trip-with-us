@@ -142,9 +142,13 @@ export class Mailbox extends Prop {
     g.roundRect(-26, -100, 52, 34, 14).fill(0x2f6db2);
     g.roundRect(-26, -84, 52, 18, 4).fill(0x2f6db2);
     g.roundRect(-22, -98, 40, 3, 1.5).fill({ color: P.white, alpha: 0.4 });
+    // the door is the rounded front on the right; the flag hinges near the back (left) on the
+    // side, so lowered it lies flat along the box, pointing toward the door
+    g.roundRect(18, -98, 8, 32, 4).fill(0x2a5f9c);
+    g.circle(23, -84, 2.2).fill(0xdfe6ee);
     this.flag.roundRect(-2, -26, 4, 26, 2).fill(0xd23b3b);
     this.flag.roundRect(-2, -26, 14, 10, 2).fill(0xd23b3b);
-    this.flag.position.set(20, -80);
+    this.flag.position.set(-16, -86);
     this.flag.rotation = Math.PI / 2;
     this.view.addChild(g, this.flag);
     this.hits = [{ x: -30, y: -110, w: 60, h: 110 }];

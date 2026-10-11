@@ -43,9 +43,10 @@ export function buildCharleston(ctx: Ctx, x0: number = CHARLESTON_X0): CitySet {
     i++;
   }
   // Palmettos on the near side and between buildings.
-  [500, 1600, 2700, 5550].forEach((dx, k) => props.push(new Palm(ctx, x0 + dx, 70, 200 + (k % 3) * 30, (k % 2) * 0.3 - 0.15, true)));
-  props.push(new Palm(ctx, x0 + 4600, WALK - 2, 230, -0.2, false));
-  props.push(new Palm(ctx, x0 + 5300, WALK - 2, 200, 0.25, false));
+  // (South Carolina palmettos are kept short and stocky.)
+  [500, 1600, 2700, 5550].forEach((dx, k) => props.push(new Palm(ctx, x0 + dx, 70, 140 + (k % 3) * 20, (k % 2) * 0.3 - 0.15, true)));
+  props.push(new Palm(ctx, x0 + 4600, WALK - 2, 160, -0.2, false));
+  props.push(new Palm(ctx, x0 + 5300, WALK - 2, 140, 0.25, false));
   props.push(new Fountain(ctx, x0 + 4950));
   return { props, doorX: doorX || x0 + 3900 };
 }

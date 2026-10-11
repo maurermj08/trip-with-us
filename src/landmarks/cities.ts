@@ -6,10 +6,12 @@ import { buildCharleston } from './Charleston';
 import { buildSavannah } from './Savannah';
 import { buildJacksonville } from './Jacksonville';
 import { buildOrlando } from './Orlando';
+import { buildPotatoWorld } from './PotatoWorld';
 
 export const CITY_BUILDERS: Record<CityId, (ctx: Ctx, x0: number) => CitySet> = {
   charleston: buildCharleston,
   savannah: buildSavannah,
   jacksonville: buildJacksonville,
   orlando: buildOrlando,
+  'potato-world': buildPotatoWorld,
 };

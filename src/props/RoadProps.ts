@@ -164,19 +164,31 @@ export class Puddle extends Prop {
 }
 
 // ---------- Mud ----------
+/** A lumpy ellipse outline (rx, ry) with `n` bumps; deterministic per seed. */
+function mudBlob(rx: number, ry: number, n: number, seed: number): number[] {
+  const pts: number[] = [];
+  const steps = 40;
+  for (let k = 0; k < steps; k++) {
+    const a = (k / steps) * Math.PI * 2;
+    const wob = 1 + 0.08 * Math.sin(a * 3 + seed * 0.37) + 0.05 * Math.sin(a * (n % 5 + 4) + seed);
+    pts.push(Math.cos(a) * rx * wob, Math.sin(a) * ry * wob);
+  }
+  return pts;
+}
+
 export class Mud extends Prop {
   private g = new Graphics();
   private lastSplat = 0;
   constructor(ctx: Ctx, x: number, len: number) {
+    len = Math.min(300, Math.max(160, len));
     super(ctx, x + len / 2, 0);
     this.layer = 'roadDecor';
     const g = this.g;
-    const n = Math.round(len / 60);
-    for (let k = 0; k < n; k++) {
-      const cx = -len / 2 + (k + 0.5) * (len / n);
-      g.ellipse(cx, (k % 3) * 3 - 2, 52 + (k % 2) * 14, 13).fill(k % 2 ? P.mud : P.mudLight);
-    }
-    for (let k = 0; k < n; k++) g.circle(-len / 2 + k * (len / n) + 20, -4, 6).fill({ color: P.white, alpha: 0.12 });
+    // One soft, lumpy puddle of mud (a single outline), a lighter middle and a couple of glints.
+    g.poly(mudBlob(len / 2, 15, 18, x)).fill(P.mud);
+    g.poly(mudBlob(len * 0.32, 8, 14, x + 7)).fill(P.mudLight);
+    g.ellipse(-len * 0.18, -5, len * 0.08, 2.2).fill({ color: P.white, alpha: 0.22 });
+    g.ellipse(len * 0.14, -2, len * 0.05, 1.8).fill({ color: P.white, alpha: 0.18 });
     this.view.addChild(g);
     this.hits = [{ x: -len / 2, y: -20, w: len, h: 36 }];
     this.bumpHalf = len / 2;
@@ -257,7 +269,7 @@ export class Rock extends Prop {
       this.ctx.sfx.bonk();
       this.ctx.car.hop(160 + car.vx * 0.12);
       this.ctx.bumpCar(0.6);
-      this.ctx.fx.emit(this.ctx.layers.fx, { x: this.x, y: -6, count: 6, shape: 'circle', tint: 0xd8cfbe, speed: [60, 160], angle: [-3, -0.2], gravity: -40, life: [0.4, 0.8], size: [10, 18], grow: 1.6, alpha: 0.6 });
+      this.ctx.fx.emit(this.ctx.layers.fx, { x: this.x, y: -surfaceAt(this.x) - 6, count: 6, shape: 'circle', tint: 0xd8cfbe, speed: [60, 160], angle: [-3, -0.2], gravity: -40, life: [0.4, 0.8], size: [10, 18], grow: 1.6, alpha: 0.6 });
     }
     if (this.alt > 0 || this.vy !== 0 || this.vx !== 0) {
       this.vy -= 1800 * dt;
@@ -272,7 +284,8 @@ export class Rock extends Prop {
       this.x += this.vx * dt;
       this.g.rotation += (this.vx * dt) / 24;
     }
-    this.view.position.set(this.x, this.y - this.alt);
+    // Sit on whatever is under the rock (bridge decks, ramps), like the beach ball does.
+    this.view.position.set(this.x, this.y - surfaceAt(this.x) - this.alt);
   }
 }
 

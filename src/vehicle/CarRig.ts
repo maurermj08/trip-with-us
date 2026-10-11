@@ -153,7 +153,7 @@ export class CarRig {
       this.exhaustT -= dt;
       if (this.exhaustT <= 0) {
         this.exhaustT = throttle ? 0.07 : 0.22 - Math.min(0.12, car.speed / 6000);
-        this.fx.emit(this.layers.fx, {
+        this.fx.emit(this.layers.behind, {
           x: car.x + this.view.dims.exhaust.x, y: -car.alt + this.view.dims.exhaust.y, count: 1, shape: 'circle', tint: [0xe8e8e8, 0xdcdcdc], speed: [20, 50],
           angle: [Math.PI - 0.3, Math.PI + 0.1], vx: -car.vx * 0.15, gravity: -40, drag: 1.5, life: [0.5, 0.9], size: [8, 12], grow: 2.4, alpha: 0.7,
         });

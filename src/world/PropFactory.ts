@@ -4,6 +4,7 @@ import type { Ctx } from '../core/Ctx';
 import type { Prop } from '../props/Prop';
 import { BeachBall, Boxes, Mud, Puddle, Ramp, Rock } from '../props/RoadProps';
 import { Birds, Cow, Fence } from '../props/FarmProps';
+import { PotatoCountdown, PotatoGantry } from '../signs/PotatoSigns';
 import { Gator, OjStand, OrangeCrate, OrangeTree } from '../props/FloridaProps';
 import { Billboard, GuideSign, InterstateShield, MileMarker, WelcomeSign } from '../signs/Signs';
 import type { Placement } from './Route';
@@ -28,5 +29,7 @@ export function createProp(ctx: Ctx, p: Placement): Prop {
     case 'crate': return new OrangeCrate(ctx, p.x);
     case 'gator': return new Gator(ctx, p.x);
     case 'oj-stand': return new OjStand(ctx, p.x);
+    case 'potato-countdown': return new PotatoCountdown(ctx, p.x, p.n ?? 10);
+    case 'potato-gantry': return new PotatoGantry(ctx, p.x);
   }
 }

@@ -149,21 +149,33 @@ export class CityHall extends Prop {
     const g = new Graphics();
     const c = 0xece4d4, sh = 0xd9cfbc;
     contactShadow(g, 0, 0, 340);
-    // Main block with columns and a pediment.
-    block(g, -150, -300, 300, 300, c, { landmark: true, shade: sh });
+    // Front steps, then the main block with columns.
+    g.roundRect(-140, -8, 280, 8, 3).fill(0xd9cfbc);
+    g.roundRect(-124, -16, 248, 8, 3).fill(0xe2d9c8);
+    block(g, -150, -300, 300, 284, c, { landmark: true, shade: sh });
     for (const px of [-110, -55, 0, 55, 110]) g.roundRect(px - 9, -250, 18, 230, 5).fill(P.white);
-    g.roundRect(-150, -22, 300, 22, 4).fill(sh);
-    roundedTri(g, 0, -340, 220, 44, 4).fill(c);
-    g.roundRect(-140, -300, 280, 8, 3).fill(lighten(c, 0.4));
+    g.roundRect(-150, -38, 300, 22, 4).fill(sh);
     for (const wx of [-128, -73, -18, 37, 92]) g.roundRect(wx + 10, -230, 16, 40, 3).fill(0x8fb0c6);
-    // Drum with the clock.
-    block(g, -78, -440, 156, 110, c, { landmark: true, shade: sh });
-    for (const px of [-62, -32, 32, 62]) g.roundRect(px - 5, -432, 10, 96, 4).fill(P.white);
-    g.circle(0, -388, 26).fill(0x2b3a52);
-    g.circle(0, -388, 22).fill(P.white);
+    // Arched front door in the middle bay.
+    g.moveTo(-20, -16).lineTo(-20, -70).arc(0, -70, 20, Math.PI, 0).lineTo(20, -16).closePath().fill(0x5a4636);
+    // Roof: cornice, then a square attic the drum stands on (set back, so it reads as on top).
+    g.roundRect(-158, -312, 316, 14, 4).fill(lighten(c, 0.3));
+    block(g, -92, -372, 184, 62, c, { landmark: true, shade: sh });
+    g.roundRect(-98, -378, 196, 10, 4).fill(lighten(c, 0.3));
+    for (const ax of [-70, -30, 10, 50]) g.roundRect(ax, -358, 20, 34, 6).fill(0x8fb0c6);
+    // The pediment over the columns, in front of the attic.
+    roundedTri(g, 0, -352, 230, 46, 4).fill(c);
+    g.poly([0, -352, 115, -306, 64, -306]).fill(sh);
+    g.roundRect(-140, -300, 280, 8, 3).fill(lighten(c, 0.4));
+    // Drum with the clock, standing on the attic.
+    block(g, -78, -478, 156, 106, c, { landmark: true, shade: sh });
+    g.roundRect(-84, -380, 168, 10, 4).fill(lighten(c, 0.3));
+    for (const px of [-62, -32, 32, 62]) g.roundRect(px - 5, -470, 10, 90, 4).fill(P.white);
+    g.circle(0, -426, 26).fill(0x2b3a52);
+    g.circle(0, -426, 22).fill(P.white);
     for (let k = 0; k < 12; k++) {
       const a = (k / 12) * Math.PI * 2;
-      g.circle(Math.cos(a) * 17, -388 + Math.sin(a) * 17, 1.6).fill(0x2b3a52);
+      g.circle(Math.cos(a) * 17, -426 + Math.sin(a) * 17, 1.6).fill(0x2b3a52);
     }
     this.view.addChild(g);
     const hh = new Graphics();
@@ -171,7 +183,7 @@ export class CityHall extends Prop {
     hh.roundRect(-1.5, -1.5, 11, 3, 1.5).fill(0x2b3a52);
     hh.circle(0, 0, 2.5).fill(0xd9a62c);
     this.hands.addChild(hh);
-    this.hands.position.set(0, -388);
+    this.hands.position.set(0, -426);
     this.view.addChild(this.hands);
     // Gold dome with ribs and a lantern on top.
     const d = new Graphics();
@@ -187,9 +199,11 @@ export class CityHall extends Prop {
     d.moveTo(-18, -140).quadraticCurveTo(0, -166, 18, -140).closePath().fill(gold);
     d.circle(0, -170, 6).fill(gold);
     this.dome.addChild(d);
-    this.dome.position.set(0, -440);
+    this.dome.position.set(0, -478);
     this.view.addChild(this.dome);
-    this.hits = [{ x: -150, y: -620, w: 300, h: 620 }];
+    // Drawn at full size, shown at 0.72 so the gold dome stays on screen.
+    this.view.scale.set(HALL_SCALE);
+    this.hits = [{ x: -150 * HALL_SCALE, y: -660 * HALL_SCALE, w: 300 * HALL_SCALE, h: 660 * HALL_SCALE }];
     this.extent = [-400, 400];
   }
 
@@ -200,7 +214,7 @@ export class CityHall extends Prop {
   onTap(): void {
     this.ctx.tweens.wobble(this.dome, 0.04, 0.9, 0.05);
     this.ctx.fx.emit(this.ctx.layers.fx, {
-      x: this.x, y: this.y - 520, count: 14, shape: 'star', tint: [0xffd166, 0xfff1a8, P.white],
+      x: this.x, y: this.y - 560 * HALL_SCALE, count: 14, shape: 'star', tint: [0xffd166, 0xfff1a8, P.white],
       speed: [100, 300], gravity: 200, life: [0.6, 1.1], size: [8, 14],
     });
     if (this.busy) return;
@@ -213,6 +227,8 @@ export class CityHall extends Prop {
     });
   }
 }
+
+const HALL_SCALE = 0.72;
 
 // ---------- Cathedral of St. John the Baptist: twin spires, rose window ----------
 export class Cathedral extends Prop {

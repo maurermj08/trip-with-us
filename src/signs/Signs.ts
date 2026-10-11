@@ -7,6 +7,7 @@ import type { Ctx } from '../core/Ctx';
 import { P, darken } from '../style/palette';
 import { R, contactShadow, cornerRect, palmetto } from '../style/shapes';
 import { drawDuck } from '../landmarks/duck';
+import { POTATO_BOARDS, type PotatoBoard } from './PotatoSigns';
 
 export const SIGN_FONT = 'Overpass, Arial, sans-serif';
 
@@ -67,33 +68,80 @@ export class MileMarker extends Prop {
   }
 }
 
-// ---------- Interstate 95 shield ----------
+// ---------- Interstate shield (the real shape) ----------
+// Outline in unit space (half-width 1, height 2.15), bottom point at (0, 0), y up negative:
+// a crowned top with a dip in the middle, sides that bulge a little, curving into a soft point.
+type Pt2 = [number, number];
+function bez(p0: Pt2, p1: Pt2, p2: Pt2, p3: Pt2, n: number, out: Pt2[]): void {
+  for (let k = 1; k <= n; k++) {
+    const t = k / n, u = 1 - t;
+    out.push([
+      u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+      u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+    ]);
+  }
+}
+const SHIELD_UNIT: Pt2[] = (() => {
+  const H = 2.15;
+  const right: Pt2[] = [[0, -H + 0.1]];
+  bez([0, -H + 0.1], [0.22, -H - 0.06], [0.62, -H - 0.1], [0.98, -H + 0.04], 10, right); // crown
+  bez([0.98, -H + 0.04], [1.1, -H * 0.62], [0.92, -H * 0.2], [0, 0], 18, right); // side to the point
+  const left = right.slice(1, -1).reverse().map(([x, y]): Pt2 => [-x, y]);
+  return [...right, ...left];
+})();
+const SHIELD_H = 2.15;
+
+/** Shield outline points at half-width `hw`, optionally shrunk toward its middle by `inset`. */
+function shieldPts(hw: number, inset = 0): Pt2[] {
+  const cy = -SHIELD_H * 0.5 * hw;
+  const k = (hw - inset) / hw;
+  return SHIELD_UNIT.map(([x, y]): Pt2 => [x * hw * k, cy + (y * hw - cy) * k]);
+}
+
+/** Keep the part of a polygon above y = cut (smaller y). */
+function clipAbove(pts: Pt2[], cut: number): Pt2[] {
+  const out: Pt2[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const ain = a[1] <= cut, bin = b[1] <= cut;
+    if (ain) out.push(a);
+    if (ain !== bin) {
+      const t = (cut - a[1]) / (b[1] - a[1]);
+      out.push([a[0] + (b[0] - a[0]) * t, cut]);
+    }
+  }
+  return out;
+}
+
+/** Shield geometry at scale s: width 70s, height ~76s, bottom point at (0, 0). */
+export function shieldGeom(s: number): { hw: number; h: number; bandY: number; numY: number } {
+  const hw = 35 * s * 0.98;
+  const h = SHIELD_H * hw;
+  return { hw, h, bandY: -h * 0.7, numY: -h * 0.36 };
+}
+
 export function drawShield(g: Graphics, s: number): void {
-  // Classic shield outline: flat-ish top with a dip, curved sides tapering to a point.
-  const w = 70 * s, h = 76 * s;
-  const shape = (inset: number) => {
-    const x0 = -w / 2 + inset, x1 = w / 2 - inset, y0 = -h + inset, y1 = -inset * 0.6;
-    g.moveTo(x0, y0 + 6 * s)
-      .quadraticCurveTo(x0 * 0.5, y0 - 3 * s, 0, y0 + 5 * s)
-      .quadraticCurveTo(x1 * 0.5, y0 - 3 * s, x1, y0 + 6 * s)
-      .quadraticCurveTo(x1 + 4 * s, y0 + h * 0.55, 0, y1)
-      .quadraticCurveTo(x0 - 4 * s, y0 + h * 0.55, x0, y0 + 6 * s)
-      .closePath();
-  };
-  shape(0);
-  g.fill(P.white);
-  shape(4 * s);
-  g.fill(P.shieldBlue);
-  // red top band
-  const x0 = -w / 2 + 4 * s, x1 = w / 2 - 4 * s, y0 = -h + 4 * s;
-  g.moveTo(x0, y0 + 6 * s)
-    .quadraticCurveTo(x0 * 0.5, y0 - 3 * s, 0, y0 + 5 * s)
-    .quadraticCurveTo(x1 * 0.5, y0 - 3 * s, x1, y0 + 6 * s)
-    .lineTo(x1 + 0.6 * s, y0 + 20 * s)
-    .lineTo(x0 - 0.6 * s, y0 + 20 * s)
-    .closePath()
-    .fill(P.shieldRed);
-  g.rect(x0, y0 + 20 * s, x1 - x0, 2.5 * s).fill(P.white);
+  const { hw, bandY } = shieldGeom(s);
+  const flat = (p: Pt2[]) => p.flat();
+  g.poly(flat(shieldPts(hw))).fill(P.white);
+  const inner = shieldPts(hw, 3.6 * s);
+  g.poly(flat(inner)).fill(P.shieldBlue);
+  g.poly(flat(clipAbove(inner, bandY))).fill(P.shieldRed);
+  // white rule between the band and the field
+  const rule = clipAbove(inner, bandY + 2.4 * s).filter(([, y]) => y > bandY - 0.01);
+  if (rule.length >= 2) {
+    const xs = rule.map(([x]) => x);
+    g.rect(Math.min(...xs), bandY, Math.max(...xs) - Math.min(...xs), 2.4 * s).fill(P.white);
+  }
+  // soft shade on the right
+  g.poly(flat(clipAbove(inner, 0).filter(([x]) => x >= hw * 0.42).concat([[hw * 0.42, 0]]))).fill({ color: P.black, alpha: 0.06 });
+}
+
+/** A text fitted to a max width (scaled down if needed). */
+function fitText(text: string, size: number, maxW: number, color: number = P.white): Text {
+  const t = signText(text, size, color);
+  if (t.width > maxW) t.scale.set(maxW / t.width);
+  return t;
 }
 
 /** US route shield: white shield shape on a black square, black numbers. */
@@ -117,9 +165,16 @@ export function routeMarker(shield: string, s: number): Container {
   if (us) drawUsShield(g, s);
   else drawShield(g, s);
   c.addChild(g);
-  const t = signText(num, (num.length >= 3 ? 24 : 32) * s, us ? 0x24262a : P.white);
-  t.position.set(0, us ? -36 * s : -34 * s);
-  c.addChild(t);
+  if (us) {
+    const t = fitText(num, 32 * s, 50 * s, 0x24262a);
+    t.position.set(0, -36 * s);
+    c.addChild(t);
+  } else {
+    const { hw, numY } = shieldGeom(s);
+    const t = fitText(num, (num.length >= 3 ? 26 : 32) * s, hw * 1.45);
+    t.position.set(0, numY);
+    c.addChild(t);
+  }
   return c;
 }
 
@@ -132,13 +187,16 @@ export class InterstateShield extends Prop {
     contactShadow(g, 0, 0, 30);
     post(g, 0, -150, 0);
     this.view.addChild(g);
+    const sc = 1.25;
+    const { hw, h, bandY, numY } = shieldGeom(sc);
     const sg = new Graphics();
-    drawShield(sg, 1.25);
+    drawShield(sg, sc);
     this.sign.addChild(sg);
-    const top = signText('INTERSTATE', 8.5);
-    top.position.set(0, -82);
-    const num = signText(route, route.length >= 3 ? 30 : 40);
-    num.position.set(0, -42);
+    // "INTERSTATE" sits inside the red band, the number in the blue field.
+    const top = fitText('INTERSTATE', 9, hw * 1.35);
+    top.position.set(0, (-h + 6 * sc + bandY) / 2 + 1);
+    const num = fitText(route, route.length >= 3 ? 32 : 42, hw * 1.45);
+    num.position.set(0, numY - 5);
     this.sign.addChild(top, num);
     this.sign.position.set(0, -120);
     this.view.addChild(this.sign);
@@ -167,6 +225,7 @@ const GUIDE_NAMES: Record<NonNullable<Placement['city']>, string> = {
   savannah: 'Savannah',
   jacksonville: 'Jacksonville',
   orlando: 'Orlando',
+  'potato-world': 'Potato World',
   'downtown-orlando': 'Downtown',
   airport: 'Airport',
 };
@@ -198,29 +257,34 @@ export class GuideSign extends Prop {
     post(g, 70, -300, 0, 9);
     this.view.addChild(g);
 
+    // Layout: route shield (or plane) on top, the destination below it, the arrow on the right,
+    // so nothing ever overlaps.
     const name = GUIDE_NAMES[city];
-    const nameSize = name.length > 10 ? 30 : 36;
+    const PH = 160;
     const p = new Graphics();
-    greenPanel(p, -150, -150, 300, 150);
+    greenPanel(p, -150, -PH, 300, PH);
     // exit tab on top right
-    p.roundRect(40, -186, 110, 40, R.sign).fill(P.signGreen);
-    p.roundRect(45, -181, 100, 34, R.sign - 3).stroke({ width: 3, color: P.white });
+    p.roundRect(40, -PH - 36, 110, 40, R.sign).fill(P.signGreen);
+    p.roundRect(45, -PH - 31, 100, 34, R.sign - 3).stroke({ width: 3, color: P.white });
     // up-right arrow
-    const ax = 108, ay = -50;
-    p.moveTo(ax - 20, ay + 22).lineTo(ax + 12, ay - 10).stroke({ width: 7, color: P.white, cap: 'round' });
-    p.poly([ax + 20, ay - 18, ax + 20, ay + 6, ax - 4, ay - 18]).fill(P.white);
-    if (city === 'airport') planeIcon(p, -96, -64, 1.1);
+    const ax = 116, ay = -78;
+    p.moveTo(ax - 18, ay + 20).lineTo(ax + 10, ay - 8).stroke({ width: 7, color: P.white, cap: 'round' });
+    p.poly([ax + 18, ay - 16, ax + 18, ay + 6, ax - 4, ay - 16]).fill(P.white);
+    const cx = -22;
+    if (city === 'airport') planeIcon(p, cx, -118, 0.95);
     this.sign.addChild(p);
     const exit = signText(`EXIT ${exitNo}`, exitNo.length > 3 ? 18 : 20);
-    exit.position.set(95, -163);
+    exit.position.set(95, -PH - 13);
     this.sign.addChild(exit);
     if (shield) {
-      const m = routeMarker(shield, 0.62);
-      m.position.set(-100, -66);
+      const m = routeMarker(shield, 0.64);
+      m.position.set(cx, -94);
       this.sign.addChild(m);
     }
-    const label = signText(name, nameSize);
-    label.position.set(-6, -110);
+    const label = signText(name, 36);
+    const maxW = 220;
+    if (label.width > maxW) label.scale.set(maxW / label.width);
+    label.position.set(cx, city === 'airport' || shield ? -54 : -84);
     this.sign.addChild(label);
     this.sign.position.set(0, -170);
     this.view.addChild(this.sign);
@@ -405,7 +469,7 @@ function star(g: Graphics, x: number, y: number, r: number, color: number): void
   g.poly(pts).fill(color);
 }
 
-const BOARDS: Record<BillboardDesign, (c: Container) => void> = {
+const BOARDS: Partial<Record<BillboardDesign, (c: Container) => void>> = {
   duckies: duckiesBoard,
   peaches: peachesBoard,
   oj: ojBoard,
@@ -422,7 +486,7 @@ export class Billboard extends Prop {
     for (const px of [-150, 0, 150]) post(g, px, -170, 0, 12);
     g.roundRect(-250, -182, 500, 8, 3).fill(darken(P.signPost, 0.1));
     this.view.addChild(g);
-    BOARDS[design](this.board);
+    (BOARDS[design] ?? POTATO_BOARDS[design as PotatoBoard])(this.board);
     this.board.pivot.set(0, -120);
     this.board.position.set(0, -270);
     this.view.addChild(this.board);
@@ -445,6 +509,7 @@ export class Billboard extends Prop {
       case 'oj': sfx.glugDing(); fxAt([0xff9f1c, 0xffd166]); break;
       case 'chomp': sfx.chomp(); break;
       case 'potato': sfx.sparkle(); fxAt([0xffd166, P.white], 'star'); break;
+      default: sfx.fanfare(); fxAt([0xffd166, 0xff9eb5, P.white], 'star'); break;
     }
   }
 }
@@ -457,38 +522,87 @@ interface WelcomeLook {
   motif: (g: Graphics, sign: Container) => void;
 }
 
+/** Crescent moon as one outline: a circle with an offset circle bitten out. Opens toward `tilt`. */
+function crescent(g: Graphics, x: number, y: number, R: number, tilt: number, color: number): void {
+  const r = R * 0.86, d = R * 0.42;
+  const xi = (d * d + R * R - r * r) / (2 * d);
+  const yi = Math.sqrt(Math.max(0, R * R - xi * xi));
+  const th = Math.atan2(yi, xi), ph = Math.atan2(yi, xi - d);
+  const pts: number[] = [];
+  const put = (px: number, py: number) => {
+    const c = Math.cos(tilt), s = Math.sin(tilt);
+    pts.push(x + px * c - py * s, y + px * s + py * c);
+  };
+  const N = 28;
+  for (let k = 0; k <= N; k++) {
+    const a = th + ((Math.PI * 2 - 2 * th) * k) / N;
+    put(R * Math.cos(a), R * Math.sin(a));
+  }
+  for (let k = 0; k <= N; k++) {
+    const b = Math.PI * 2 - ph - ((Math.PI * 2 - 2 * ph) * k) / N;
+    put(d + r * Math.cos(b), r * Math.sin(b));
+  }
+  g.poly(pts).fill(color);
+}
+
+/** The palmetto from the South Carolina flag: a gently tapered trunk under a fan of fronds. */
+function flagPalmetto(g: Graphics, x: number, base: number, h: number, color: number): void {
+  const ty = base - h * 0.6;
+  g.moveTo(x - h * 0.05, base)
+    .quadraticCurveTo(x - h * 0.028, base - h * 0.32, x - h * 0.022, ty)
+    .lineTo(x + h * 0.022, ty)
+    .quadraticCurveTo(x + h * 0.028, base - h * 0.32, x + h * 0.05, base)
+    .closePath()
+    .fill(color);
+  const cy = ty + h * 0.02;
+  const leaf = (deg: number, len: number, wid: number, droop: number) => {
+    const a = (deg * Math.PI) / 180;
+    const tx = x + Math.cos(a) * len, tyy = cy + Math.sin(a) * len + droop;
+    const mx = (x + tx) / 2, my = (cy + tyy) / 2;
+    const nx = -Math.sin(a) * wid, ny = Math.cos(a) * wid;
+    g.moveTo(x, cy).quadraticCurveTo(mx + nx, my + ny, tx, tyy).quadraticCurveTo(mx - nx, my - ny, x, cy).fill(color);
+  };
+  const L = h * 0.4;
+  for (const [deg, k] of [[-160, 0.8], [-140, 0.92], [-118, 1], [-98, 1.04], [-82, 1.04], [-62, 1], [-40, 0.92], [-20, 0.8]] as const) leaf(deg, L * k, h * 0.05, 0);
+  // two drooping fronds
+  leaf(185, L * 0.78, h * 0.045, h * 0.1);
+  leaf(-5, L * 0.78, h * 0.045, h * 0.1);
+  g.ellipse(x, cy, h * 0.06, h * 0.045).fill(color);
+}
+
+/** Text fitted to the right two-thirds of a welcome panel. */
+const WELCOME_TEXT_X = 34;
+const WELCOME_TEXT_W = 150;
+
 const WELCOME: Record<StateId, WelcomeLook> = {
   SC: {
     color: P.scBlue,
     name: 'SOUTH\nCAROLINA',
-    motif: (p, sign) => {
-      // palmetto + crescent (state flag motif) in white
-      const tree = new Graphics();
-      palmetto(tree, 0, 0, 70, 0, P.white);
-      tree.position.set(-72, -22);
-      p.moveTo(-100, -122).arc(-92, -116, 10, Math.PI * 0.85, Math.PI * 1.95).quadraticCurveTo(-94, -112, -100, -122).fill(P.white);
-      sign.addChild(tree);
+    motif: (p) => {
+      // The state flag: crescent up top, palmetto below (white on indigo).
+      crescent(p, -94, -110, 11, -0.65, P.white);
+      flagPalmetto(p, -70, -20, 96, P.white);
     },
   },
   GA: {
     color: 0x2e6f9e,
     name: 'GEORGIA',
     motif: (p) => {
-      fruit(p, -72, -64, 36, 0xffb37a, 0xf26b5b);
+      fruit(p, -74, -66, 34, 0xffb37a, 0xf26b5b);
     },
   },
   FL: {
     color: 0x1e88c7,
     name: 'FLORIDA',
     motif: (p, sign) => {
-      p.circle(-60, -96, 22).fill(0xffd166);
-      p.roundRect(-114, -34, 92, 22, 8).fill(0x7fd1f0);
+      p.circle(-60, -100, 20).fill(0xffd166);
+      p.roundRect(-112, -34, 88, 20, 8).fill(0x7fd1f0);
       const tree = new Graphics();
       palmetto(tree, 0, 0, 64, 0.15, 0x2f9e5a);
-      tree.position.set(-82, -16);
+      tree.position.set(-84, -18);
       sign.addChild(tree);
       const g = new Graphics();
-      fruit(g, -42, -40, 14, 0xff9f1c);
+      fruit(g, -44, -40, 13, 0xff9f1c);
       sign.addChild(g);
     },
   },
@@ -512,12 +626,13 @@ export class WelcomeSign extends Prop {
     cornerRect(p, -120 + 240 * 0.72, -140, 240 * 0.28, 140, 0, R.sign, R.sign, 0).fill({ color: P.black, alpha: 0.08 });
     this.sign.addChild(p);
     look.motif(p, this.sign);
-    const w = signText('WELCOME TO', 16);
-    w.position.set(28, -104);
+    const w = fitText('WELCOME TO', 16, WELCOME_TEXT_W);
+    w.position.set(WELCOME_TEXT_X, -106);
     const two = look.name.includes('\n');
-    const name = signText(look.name, two ? 28 : look.name.length > 7 ? 27 : 30);
-    name.style.lineHeight = 28;
-    name.position.set(28, two ? -58 : -66);
+    const name = signText(look.name, two ? 26 : 30);
+    name.style.lineHeight = 27;
+    if (name.width > WELCOME_TEXT_W) name.scale.set(WELCOME_TEXT_W / name.width);
+    name.position.set(WELCOME_TEXT_X, two ? -56 : -64);
     this.sign.addChild(w, name);
     this.sign.position.set(0, -60);
     this.view.addChild(this.sign);

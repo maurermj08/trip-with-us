@@ -1,10 +1,10 @@
 // The trip's route skeleton: every trip drives the same sequence of legs, cities and set pieces.
 // World units: x grows toward the destination, y=0 is the road contact line.
 // The data lives in ./trip/ (pure, tested); this module is the public facade.
-import { AIRPORTS, ARRIVE_X, BRIDGES, CITIES, CITY_LAYOUT, FINAL_CITY, GREET_X, WORLD_END, ZONE_LIST } from './trip/cities';
+import { AIRPORTS, ARRIVE_X, BRIDGES, CITIES, CITY_LAYOUT, DUCKIES_STOPS, FINAL_CITY, GREET_X, STOP_X, WORLD_END, ZONE_LIST } from './trip/cities';
 import type { BridgeSpec, ZoneSpec } from './trip/types';
 
-export { AIRPORTS, ARRIVE_X, BRIDGES, CITIES, CITY_LAYOUT, FINAL_CITY, GREET_X, WORLD_END, ZONE_LIST };
+export { AIRPORTS, ARRIVE_X, BRIDGES, CITIES, CITY_LAYOUT, DUCKIES_STOPS, FINAL_CITY, GREET_X, STOP_X, WORLD_END, ZONE_LIST };
 export { ROUTE, RAMPS, MILES, MILE_COUNT, KEEP_OUT, mileMarkerX, layoutMiles, type Placement, type PlacementKind, type RampSpec, type BillboardDesign } from './trip/legs';
 export { REGIONS, WATER_REGIONS, regionAt, skylineAt, timeOfDay, type Region, type SkylineStyle } from './trip/regions';
 export type { AirportSpec, BridgeSpec, CityId, CitySpec, StateId, ZoneSpec } from './trip/types';

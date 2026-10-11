@@ -1,6 +1,6 @@
 // Pure data types for the trip (no Pixi). World units: x grows toward the destination.
 
-export type CityId = 'charleston' | 'savannah' | 'jacksonville' | 'orlando';
+export type CityId = 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'potato-world';
 export type StateId = 'SC' | 'GA' | 'FL';
 export type BridgeId = 'ravenel' | 'talmadge' | 'main-street' | 'i4-flyover';
 export type BridgeKind = 'cable-stayed' | 'lift' | 'flyover';
@@ -28,13 +28,14 @@ export interface CitySpec {
   /** The city street starts here (= its bridge's end). */
   x0: number;
   len: number;
-  bridge: BridgeId;
+  /** The bridge that leads into the city (Potato World has none). */
+  bridge?: BridgeId;
   /** Only the last city: the family greeting happens here. */
   final?: true;
 }
 
 export type ZoneKind = 'home' | 'stop' | 'bridge' | 'city' | 'airport';
-export type Surface = 'sidewalk' | 'lot' | 'cobble' | 'riverwalk' | 'pavers';
+export type Surface = 'sidewalk' | 'lot' | 'cobble' | 'riverwalk' | 'pavers' | 'parade';
 
 export interface ZoneSpec {
   id: string;

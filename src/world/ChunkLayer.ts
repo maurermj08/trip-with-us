@@ -1,11 +1,15 @@
 import { Container } from 'pixi.js';
 
+/** A chunk may animate: give its container an `onTick(dt)` (called only while the chunk is live). */
+export type TickingChunk = Container & { onTick?: (dt: number) => void };
+
 /**
  * A parallax layer built lazily from fixed-width chunks, so only what is near
- * the camera exists. Chunk content is deterministic per index.
+ * the camera exists. Chunk content is deterministic per index; animation is
+ * opt-in per chunk via `onTick`.
  */
 export class ChunkLayer extends Container {
-  private chunks = new Map<number, Container>();
+  private chunks = new Map<number, TickingChunk>();
 
   constructor(
     public factor: number,
@@ -33,6 +37,11 @@ export class ChunkLayer extends Container {
         this.addChild(c);
       }
     }
+  }
+
+  /** Runs `onTick` on every live chunk that has one. */
+  tick(dt: number): void {
+    for (const c of this.chunks.values()) c.onTick?.(dt);
   }
 
   reset(): void {

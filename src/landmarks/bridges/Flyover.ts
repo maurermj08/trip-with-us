@@ -5,7 +5,7 @@ import { Prop } from '../../props/Prop';
 import type { Ctx } from '../../core/Ctx';
 import { P } from '../../style/palette';
 import { R } from '../../style/shapes';
-import { signText, greenPanel, drawShield } from '../../signs/Signs';
+import { signText, greenPanel, routeMarker } from '../../signs/Signs';
 import type { BridgeSpec } from '../../world/Route';
 
 export class FlyoverRamp extends Prop {
@@ -65,14 +65,11 @@ export class FlyoverRamp extends Prop {
     sg.roundRect(mid - 6, deck - 334, 260, 12, 4).fill(P.signPost);
     greenPanel(sg, mid + 20, deck - 322, 230, 96);
     this.sign.addChild(sg);
-    const sh = new Graphics();
-    drawShield(sh, 0.55);
-    sh.position.set(mid + 62, deck - 230);
-    const num = signText('4', 20);
-    num.position.set(mid + 62, deck - 246);
+    const sh = routeMarker('4', 0.55);
+    sh.position.set(mid + 62, deck - 236);
     const t = signText('DOWNTOWN', 22);
     t.position.set(mid + 158, deck - 274);
-    this.sign.addChild(sh, num, t);
+    this.sign.addChild(sh, t);
     this.view.addChild(this.sign);
 
     this.hits = [{ x: 0, y: -peak - 30, w: len, h: peak + 30 }];

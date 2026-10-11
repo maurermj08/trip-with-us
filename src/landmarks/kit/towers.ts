@@ -8,7 +8,7 @@ import { Container, Graphics } from 'pixi.js';
 import { Prop } from '../../props/Prop';
 import type { Ctx } from '../../core/Ctx';
 import { P, darken, lighten } from '../../style/palette';
-import { block, contactShadow, glint, windowGrid } from '../../style/shapes';
+import { block, contactShadow, windowGrid } from '../../style/shapes';
 import { makeRng } from '../../core/rng';
 import { WALK } from './common';
 
@@ -131,7 +131,7 @@ export class Tower extends Prop {
     // a few floors start lit
     this.floors.forEach((f, i) => i % 5 === 2 && (f.tint = P.warmWindow));
     const gl = new Graphics();
-    glint(gl, -w / 2 + 20, -h + 30, 26, h * 0.5, 0.18);
+    slimGlint(gl, -w / 2 + 20, -h + 30, 26, h * 0.5, w, 0.18);
     this.body.addChild(gl);
   }
 
@@ -169,8 +169,11 @@ export class Tower extends Prop {
     windowGrid(g, w * 0.05, -h + 60, w * 0.4, h - 110, rng, { scale: 1.5, lit: 0.12 });
     g.roundRect(-w * 0.3, -44, w * 0.6, 44, 4).fill(darken(L.glass, 0.2));
     this.shine = new Graphics();
-    glint(this.shine, -w / 2 + 24, -h + 80, 22, h - 140, 0.4);
-    this.body.addChild(this.shine);
+    slimGlint(this.shine, -w / 2 + 24, -h + 80, 22, h - 140, w, 0.4);
+    // Keep the glint (and its sweep on tap) on the glass: clip it to the tower's outline.
+    const clip = new Graphics().poly([-w / 2, -h + 40, w / 2, -h - 20, w / 2, 0, -w / 2, 0]).fill(0xffffff);
+    this.body.addChild(clip, this.shine);
+    this.shine.mask = clip;
   }
 
   hintTarget(): Container {
@@ -217,4 +220,10 @@ export class Tower extends Prop {
       b.tint = CROWN_COLORS[Math.floor(this.t * speed + k) % CROWN_COLORS.length];
     });
   }
+}
+
+/** A window glint whose slant stays within the tower's width (tall towers made it overshoot). */
+function slimGlint(g: Graphics, x: number, y: number, w: number, h: number, towerW: number, alpha: number): void {
+  const s = Math.min(h * 0.45, towerW * 0.3);
+  g.poly([x + s, y, x + s + w, y, x + w, y + h, x, y + h]).fill({ color: P.white, alpha });
 }

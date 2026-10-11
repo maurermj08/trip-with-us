@@ -1,6 +1,6 @@
 // Scenery regions along the trip, the skyline style above them, and the time of day.
-import { AIRPORTS, CITIES, FINAL_CITY } from './cities';
-import type { SkyKey } from './types';
+import { AIRPORTS, CITIES } from './cities';
+import type { CitySpec, SkyKey } from './types';
 
 export type Region =
   // Home → Charleston
@@ -8,7 +8,9 @@ export type Region =
   // Georgia
   | 'port' | 'savannah' | 'gaCoast'
   // Florida
-  | 'river' | 'jacksonville' | 'flatwoods' | 'citrus' | 'pasture' | 'lakes' | 'airport' | 'floridaSuburb' | 'orlando';
+  | 'river' | 'jacksonville' | 'flatwoods' | 'citrus' | 'pasture' | 'lakes' | 'airport' | 'floridaSuburb' | 'orlando'
+  // The finale
+  | 'potatoWorld';
 
 export const REGIONS: [number, Region][] = [
   [0, 'suburb'],
@@ -46,6 +48,8 @@ export const REGIONS: [number, Region][] = [
   [244800, 'jacksonville'],
   // → Orlando
   [250600, 'flatwoods'],
+  [256000, 'duckies'],
+  [259900, 'flatwoods'],
   [262000, 'citrus'],
   [272000, 'pasture'],
   [280000, 'flatwoods'],
@@ -54,6 +58,9 @@ export const REGIONS: [number, Region][] = [
   [306000, 'citrus'],
   [314000, 'floridaSuburb'],
   [326800, 'orlando'],
+  // World Drive, then the park.
+  [332600, 'floridaSuburb'],
+  [334400, 'potatoWorld'],
 ];
 
 export const WATER_REGIONS = new Set<Region>(['harbor', 'marsh', 'port', 'river', 'gaCoast']);
@@ -68,7 +75,12 @@ export function regionAt(x: number): Region {
 }
 
 /** What the far haze skyline shows. City skylines start rising ~6k before each city. */
-export type SkylineStyle = 'hills' | 'town' | 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'airport' | 'flat';
+export type SkylineStyle = 'hills' | 'town' | 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'potato' | 'airport' | 'flat';
+
+const CITY_SKYLINE: Record<CitySpec['id'], SkylineStyle> = {
+  charleston: 'charleston', savannah: 'savannah', jacksonville: 'jacksonville', orlando: 'orlando', 'potato-world': 'potato',
+};
+const isCitySkyline = (s: SkylineStyle) => Object.values(CITY_SKYLINE).includes(s);
 
 const SKYLINE: [number, SkylineStyle][] = (() => {
   const keys: [number, SkylineStyle][] = [[0, 'hills']];
@@ -76,10 +88,10 @@ const SKYLINE: [number, SkylineStyle][] = (() => {
     if (r === 'town' || r === 'duckies') keys.push([x, 'town']);
     else if (r === 'flatwoods' || r === 'citrus' || r === 'pasture' || r === 'lakes' || r === 'floridaSuburb') keys.push([x, 'flat']);
     else if (r === 'airport') keys.push([x, 'airport']);
-    else if (r !== 'charleston' && r !== 'savannah' && r !== 'jacksonville' && r !== 'orlando') keys.push([x, 'hills']);
+    else if (r !== 'charleston' && r !== 'savannah' && r !== 'jacksonville' && r !== 'orlando' && r !== 'potatoWorld') keys.push([x, 'hills']);
   }
   for (const c of CITIES) {
-    keys.push([c.x0 - 6000, c.id]);
+    keys.push([c.x0 - 6000, CITY_SKYLINE[c.id]]);
     keys.push([c.x0 + (c.final ? 20000 : c.len + 1500), 'hills']);
   }
   keys.sort((a, b) => a[0] - b[0]);
@@ -88,8 +100,8 @@ const SKYLINE: [number, SkylineStyle][] = (() => {
   let city: SkylineStyle | null = null;
   let cityEnd = -1;
   for (const [x, s] of keys) {
-    if (s === 'charleston' || s === 'savannah' || s === 'jacksonville' || s === 'orlando') {
-      const c = CITIES.find((cc) => cc.id === s)!;
+    if (isCitySkyline(s)) {
+      const c = CITIES.find((cc) => CITY_SKYLINE[cc.id] === s)!;
       city = s;
       cityEnd = c.x0 + (c.final ? 20000 : c.len + 1500);
       out.push([x, s]);
@@ -112,13 +124,13 @@ export function skylineAt(x: number): SkylineStyle {
   return s;
 }
 
-/** Morning at home, day for most of the trip, golden hour from the big airport to Orlando. */
+/** Morning at home, day for most of the trip, golden hour from the big airport to Orlando (and on to the park). */
 export const SKY_KEYS: SkyKey[] = [
   { x: 0, morning: 1, gold: 0 },
   { x: 30000, morning: 0, gold: 0 },
   { x: AIRPORTS[1].x0 - 2000, morning: 0, gold: 0 },
   { x: AIRPORTS[1].x0 + AIRPORTS[1].len, morning: 0, gold: 0.35 },
-  { x: FINAL_CITY.x0, morning: 0, gold: 1 },
+  { x: CITIES.find((c) => c.id === 'orlando')!.x0, morning: 0, gold: 1 },
 ];
 
 export function timeOfDay(x: number): { morning: number; gold: number } {

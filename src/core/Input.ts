@@ -154,7 +154,7 @@ export class Input {
     return null;
   }
 
-  state(): { throttle: boolean; brake: boolean; lift: boolean } {
+  state(): { throttle: boolean; brake: boolean; reverse: boolean; lift: boolean } {
     let throttle = this.keys.has('arrowright') || this.keys.has('d');
     let brake = this.keys.has('arrowleft') || this.keys.has('a');
     let lift = this.keys.has('arrowup') || this.keys.has(' ') || this.keys.has('w');
@@ -166,7 +166,8 @@ export class Input {
       if (z === 'brake') brake = true;
       if (z === 'lift' || z === 'liftGo') lift = true;
     }
-    return { throttle, brake: brake && !throttle, lift };
+    // Holding brake keeps going: stop, then back up slowly (left arrow or the left half).
+    return { throttle, brake: brake && !throttle, reverse: brake && !throttle, lift };
   }
 
   get touching(): boolean {

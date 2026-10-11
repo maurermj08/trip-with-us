@@ -20,12 +20,21 @@ export const CAR = {
   glideMaxFall: 520,
   launchBonus: 220,
   maxThrowSpeed: 900,
+  /** Holding brake at a standstill backs up after this pause (so a stop stays a stop). */
+  reverseDelay: 0.35,
+  /** Backwards is a full mirror of forwards: same pickup and top speed, hops and flight. */
+  reverseAccel: 560,
+  maxReverse: 900,
+  /** Approaching the end of the road the car eases to a stop (never a crash) at this decel. */
+  endDecel: 900,
 };
 
 export interface CarInput {
   throttle: boolean;
   brake: boolean;
   lift: boolean;
+  /** Brake held by the child (not a scripted stop): after a pause at a standstill, back up. */
+  reverse?: boolean;
   /** When the car is being dragged: the desired position. */
   hold: { x: number; alt: number } | null;
 }
@@ -51,6 +60,8 @@ export class CarController {
   flying = false;
   airTime = 0;
   private liftWasDown = false;
+  /** Seconds the brake has been held at a standstill (or while backing up). */
+  private reverseT = 0;
 
   constructor(
     private surface: (x: number) => number,
@@ -89,11 +100,21 @@ export class CarController {
     }
 
     // Horizontal: the child owns the pace.
+    if (!input.brake) this.reverseT = 0;
     if (input.throttle) {
       this.vx += CAR.accel * dt * (this.vx < 0 ? 2.5 : 1);
       this.vx = Math.min(this.vx, CAR.maxSpeed);
     } else if (input.brake) {
-      this.vx = approach(this.vx, 0, CAR.brake * dt);
+      if (this.vx > 0) {
+        this.vx = approach(this.vx, 0, CAR.brake * dt);
+        this.reverseT = 0;
+      } else if (input.reverse) {
+        // Already rolling backwards (on the ground or in the air): keep speeding up, no pause.
+        this.reverseT = this.vx < 0 ? CAR.reverseDelay + 1 : this.reverseT + dt;
+        if (this.reverseT > CAR.reverseDelay) this.vx = Math.max(this.vx - CAR.reverseAccel * dt, -CAR.maxReverse);
+      } else {
+        this.vx = approach(this.vx, 0, CAR.brake * dt);
+      }
     } else {
       const drag = this.onGround
         ? CAR.coastDrag * Math.abs(this.vx) + CAR.rollDrag
@@ -101,10 +122,13 @@ export class CarController {
       this.vx = approach(this.vx, 0, drag * dt);
     }
 
+    // The end of the road: ease off so the car rolls to a gentle stop right at maxX.
+    if (this.vx > 0) this.vx = Math.min(this.vx, Math.sqrt(2 * CAR.endDecel * Math.max(0, this.maxX - this.x)));
+
     // Lift: touching high hops at low speed and flies at high speed.
     const liftPressed = input.lift && !this.liftWasDown;
     this.liftWasDown = input.lift;
-    const fast = this.vx >= CAR.flySpeed;
+    const fast = Math.abs(this.vx) >= CAR.flySpeed;
 
     if (this.onGround && liftPressed) {
       this.onGround = false;

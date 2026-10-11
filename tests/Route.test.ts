@@ -25,19 +25,24 @@ describe('Route', () => {
     }
   });
 
-  it('the trip ends in Orlando after the last bridge', () => {
-    expect(FINAL_CITY.id).toBe('orlando');
+  it('the trip ends inside Potato World, just after Orlando', () => {
+    expect(FINAL_CITY.id).toBe('potato-world');
+    const orlando = CITIES.find((c) => c.id === 'orlando')!;
     const last = BRIDGES.at(-1)!;
     expect(miles.at(-1)!.x).toBeLessThan(last.start);
-    expect(ARRIVE_X).toBeGreaterThanOrEqual(last.end);
+    expect(FINAL_CITY.x0).toBeGreaterThan(orlando.x0 + orlando.len);
+    expect(FINAL_CITY.x0 - (orlando.x0 + orlando.len)).toBeLessThan(5000);
+    expect(ARRIVE_X).toBeGreaterThanOrEqual(FINAL_CITY.x0);
+    expect(GREET_X).toBeGreaterThan(FINAL_CITY.x0);
     expect(GREET_X).toBeLessThan(WORLD_END);
     expect(roadHeight(ARRIVE_X)).toBe(0);
   });
 
   it('cities are in order, do not overlap, and each starts where its bridge ends', () => {
-    expect(CITIES.map((c) => c.id)).toEqual(['charleston', 'savannah', 'jacksonville', 'orlando']);
+    expect(CITIES.map((c) => c.id)).toEqual(['charleston', 'savannah', 'jacksonville', 'orlando', 'potato-world']);
     for (let i = 1; i < CITIES.length; i++) expect(CITIES[i].x0).toBeGreaterThan(CITIES[i - 1].x0 + CITIES[i - 1].len);
-    for (const c of CITIES) {
+    expect(CITIES.filter((c) => c.final).map((c) => c.id)).toEqual(['potato-world']);
+    for (const c of CITIES.filter((cc) => cc.bridge)) {
       const b = BRIDGES.find((br) => br.id === c.bridge)!;
       expect(b.end).toBe(c.x0);
       expect(roadHeight(b.start + b.rise + 10)).toBe(b.top);
@@ -82,6 +87,17 @@ describe('Route', () => {
       expect(g.x).toBeLessThan(city.x0);
       if (prev) expect(g.x).toBeGreaterThan(prev.x0);
     }
+  });
+
+  it('puddles and mud never come in runs, and mud patches stay small', () => {
+    const wet = ROUTE.filter((p) => p.kind === 'puddle' || p.kind === 'mud');
+    for (let i = 1; i < wet.length; i++) expect(wet[i].x - wet[i - 1].x).toBeGreaterThanOrEqual(3500);
+    for (const m of wet.filter((p) => p.kind === 'mud')) expect(m.len ?? 0).toBeLessThanOrEqual(300);
+  });
+
+  it('Potato World hype stays behind the road (no near-shoulder ads)', () => {
+    expect(ROUTE.filter((p) => p.kind === 'potato-countdown')).toEqual([]);
+    expect(ROUTE.filter((p) => p.kind === 'billboard' && p.design?.startsWith('potato')).length).toBeGreaterThanOrEqual(3);
   });
 
   it('the sky goes morning → day → golden', () => {

@@ -7,6 +7,7 @@ import type { Ctx } from '../core/Ctx';
 import { Prop } from '../props/Prop';
 import { P, darken, lighten } from '../style/palette';
 import { block, contactShadow } from '../style/shapes';
+import { ease } from '../core/Tween';
 import { CITIES } from '../world/Route';
 import { WALK, type CitySet } from './kit/common';
 import { BRICKS, Cathedral, CityHall, Warehouse } from './kit/savannahBuildings';
@@ -48,19 +49,29 @@ export class RiverBand extends Prop {
   }
 }
 
-// ---------- Paddle-wheel riverboat (tap: steam whistle and puffs) ----------
+// ---------- Paddle-wheel riverboat ----------
+// Cruises up and down the river band, turning around at each end; the wheel throws spray, the
+// stacks puff now and then, the flag flutters and a wake trails behind. Tap: steam whistle.
+const BOAT_SCALE = 0.72;
+
 export class Riverboat extends Prop {
   private boat = new Container();
   private wheel = new Graphics();
+  private flag = new Container();
   private stacks: [number, number][] = [[-70, -150], [-30, -150]];
   private t = 0;
-  private drift = 0;
   private cool = 0;
+  private dir = 1;
+  private turning = false;
+  private sprayT = 0;
+  private puffT = 1;
+  private wakeT = 0;
 
-  constructor(ctx: Ctx, x: number) {
+  /** `range`: how far (each way) the boat cruises from x. */
+  constructor(ctx: Ctx, x: number, private range = 1200) {
     super(ctx, x, RIVER_Y + 150);
     this.layer = 'front';
-    this.boat.scale.set(0.72);
+    this.boat.scale.set(BOAT_SCALE);
     const g = new Graphics();
     const white = 0xfbf8f0, trim = 0xc8473d;
     // Hull and three decks of railings.
@@ -71,20 +82,35 @@ export class Riverboat extends Prop {
     block(g, -150, -128, 250, 44, white, { radius: 6, shade: 0xe9e3d6 });
     g.roundRect(-190, -90, 350, 8, 4).fill(trim);
     g.roundRect(-160, -134, 270, 8, 4).fill(trim);
+    // Railings along the open decks.
+    for (const [ry, rx0, rx1] of [[-92, -186, 156], [-136, -156, 106]] as const) {
+      for (let rx = rx0; rx <= rx1; rx += 12) g.rect(rx, ry - 12, 2, 12).fill(trim);
+    }
     for (let k = 0; k < 9; k++) g.roundRect(-160 + k * 34, -72, 22, 26, 5).fill(0x9fc3d9);
     for (let k = 0; k < 6; k++) g.roundRect(-130 + k * 36, -118, 22, 22, 5).fill(0x9fc3d9);
-    // Pilot house and twin stacks.
+    // Little passengers at a few windows.
+    for (const [px, py, col] of [[-149, -60, 0xf7c934], [-47, -60, 0x3f7fd1], [-113, -106, 0xe9637a], [31, -106, 0x7fbf6a]] as const) {
+      g.circle(px, py - 6, 5).fill(0xf1c7a1);
+      g.roundRect(px - 6, py, 12, 8, 3).fill(col);
+    }
+    // Pilot house and twin stacks with crowns.
     block(g, -10, -168, 70, 40, white, { radius: 6, shade: 0xe9e3d6 });
     g.roundRect(-4, -160, 58, 14, 4).fill(0x9fc3d9);
     for (const [sx, sy] of this.stacks) {
       g.roundRect(sx - 8, sy - 60, 16, 70, 4).fill(0x2b2f33);
       g.roundRect(sx - 12, sy - 66, 24, 10, 4).fill(0x2b2f33);
+      for (let k = 0; k < 3; k++) g.circle(sx - 8 + k * 8, sy - 68, 3.5).fill(0xd9a62c);
       g.roundRect(sx - 8, sy - 40, 16, 6, 2).fill(trim);
     }
-    // Flag.
     g.roundRect(118, -190, 3, 60, 1.5).fill(0x2b2f33);
-    g.poly([121, -190, 150, -182, 121, -174]).fill(trim);
     this.boat.addChild(g);
+    // Flag on its own so it can flutter.
+    const f = new Graphics();
+    f.poly([0, 0, 30, 6, 28, 10, 0, 16]).fill(trim);
+    f.poly([0, 6, 29, 8, 0, 10]).fill(0xfbf8f0);
+    this.flag.addChild(f);
+    this.flag.position.set(121, -190);
+    this.boat.addChild(this.flag);
     // Red stern paddle wheel (turns), half in the water.
     const w = this.wheel;
     w.circle(0, 0, 54).fill(trim);
@@ -102,8 +128,8 @@ export class Riverboat extends Prop {
     wash.roundRect(-290, 4, 120, 5, 2.5).fill({ color: P.white, alpha: 0.6 });
     this.boat.addChild(wash);
     this.view.addChild(this.boat);
-    this.hits = [{ x: -210, y: -190, w: 390, h: 200 }];
-    this.extent = [-700, 700];
+    this.hits = [{ x: -170, y: -150, w: 330, h: 160 }];
+    this.extent = [-range - 700, range + 700];
   }
 
   hintTarget(): Container {
@@ -115,29 +141,173 @@ export class Riverboat extends Prop {
     this.ctx.tweens.wobble(this.boat, 0.03, 1.0, 0.03);
   }
 
+  /** World position of a point on the boat (boat-local, unscaled). */
+  private at(lx: number, ly: number): { x: number; y: number } {
+    return { x: this.x + this.boat.x + lx * this.boat.scale.x, y: this.y + this.boat.y + ly * BOAT_SCALE };
+  }
+
+  private puff(count: number, size: [number, number]): void {
+    for (const [sx, sy] of this.stacks) {
+      const p = this.at(sx, sy - 66);
+      this.ctx.fx.emit(this.ctx.layers.fx, {
+        x: p.x, y: p.y, count, shape: 'circle', tint: [P.white, 0xeef2f6, 0xdfe3e8],
+        speed: [30, 90], angle: [-2.0, -1.2], gravity: -60, drag: 0.8, life: [1.0, 1.6], size, grow: 2.2, alpha: 0.8, vx: -this.dir * 20,
+      });
+    }
+  }
+
   /** Whistle and steam (also called when the Waving Girl waves). */
   answer(horn = false): void {
     if (this.cool > 0) return;
     this.cool = 1.6;
     if (horn) this.ctx.sfx.shipHorn();
     else this.ctx.sfx.steamWhistle();
-    for (const [sx, sy] of this.stacks) {
-      this.ctx.fx.emit(this.ctx.layers.fx, {
-        x: this.x + (this.boat.x + sx) * 0.72, y: this.y + this.boat.y + (sy - 66) * 0.72, count: 6, shape: 'circle', tint: [P.white, 0xeef2f6],
-        speed: [40, 110], angle: [-2.0, -1.2], gravity: -60, drag: 0.8, life: [1.0, 1.6], size: [14, 22], grow: 2.2, alpha: 0.85,
-      });
-    }
+    this.puff(6, [14, 22]);
+  }
+
+  /** Turn around at the end of the run: squash, flip and carry on the other way. */
+  private turn(): void {
+    this.turning = true;
+    const from = this.dir;
+    this.dir = -from;
+    this.ctx.tweens.add(1.4, (p) => {
+      if (this.boat.destroyed) return;
+      this.boat.scale.x = BOAT_SCALE * from * Math.cos(p * Math.PI);
+      this.boat.scale.y = BOAT_SCALE * (1 + Math.sin(p * Math.PI) * 0.06);
+    }, {
+      ease: ease.inOutSine,
+      done: () => {
+        this.turning = false;
+        if (!this.boat.destroyed) this.boat.scale.set(BOAT_SCALE * this.dir, BOAT_SCALE);
+      },
+    });
+  }
+
+  private wake(): void {
+    const sx = this.boat.scale.x;
+    const r = new Graphics().roundRect(-30, -2, 60, 4, 2).fill({ color: P.white, alpha: 0.6 });
+    r.position.set(this.boat.x - 250 * sx, this.boat.y + 14 + Math.random() * 10);
+    this.view.addChildAt(r, 0);
+    const x0 = r.x, drift = -this.dir * 30;
+    this.ctx.tweens.add(2.4, (p) => {
+      if (r.destroyed) return;
+      r.scale.x = 1 + p * 2.2;
+      r.x = x0 + drift * p;
+      r.alpha = 1 - p;
+    }, { done: () => !r.destroyed && r.destroy() });
   }
 
   update(dt: number): void {
     this.t += dt;
     this.cool = Math.max(0, this.cool - dt);
-    // Bob on the water and drift slowly up and down the river.
-    this.drift = Math.sin(this.t * 0.12) * 160;
-    this.boat.x = this.drift;
-    this.hits[0].x = this.drift - 210;
+    // Bob, and cruise the river (slow down near the ends, then turn around).
     this.boat.y = Math.sin(this.t * 1.4) * 2.5;
-    this.wheel.rotation -= dt * (1.4 + Math.cos(this.t * 0.12) * 0.4);
+    this.boat.rotation = Math.sin(this.t * 0.9) * 0.008;
+    if (!this.turning) {
+      const ahead = this.range - this.dir * this.boat.x;
+      const v = 70 * Math.min(1, 0.25 + ahead / 300);
+      this.boat.x += this.dir * v * dt;
+      if (this.dir * this.boat.x >= this.range) this.turn();
+    }
+    this.hits[0].x = this.boat.x - 170;
+    const working = !this.turning;
+    this.wheel.rotation -= dt * (working ? 2.2 : 0.8);
+    // Spray off the paddle wheel, thrown astern.
+    this.sprayT -= dt;
+    if (working && this.sprayT <= 0) {
+      this.sprayT = 0.07;
+      const p = this.at(-226, 20);
+      this.ctx.fx.spawn(this.ctx.layers.fx, {
+        x: p.x, y: p.y, shape: 'drop', tint: [P.white, 0xbfe6ff, RIVER],
+        speed: [90, 180], angle: this.dir > 0 ? [-2.9, -2.2] : [-0.95, -0.25],
+        gravity: 700, drag: 0.3, life: [0.35, 0.55], size: [5, 8], spin: 0, rotate: false, alpha: 0.85,
+      });
+    }
+    // A puff from the stacks now and then, and the wake.
+    this.puffT -= dt;
+    if (this.puffT <= 0) {
+      this.puffT = 1.4 + Math.random() * 1.2;
+      this.puff(1, [10, 16]);
+    }
+    this.wakeT -= dt;
+    if (working && this.wakeT <= 0) {
+      this.wakeT = 0.45;
+      this.wake();
+    }
+    this.flag.scale.y = 1 + Math.sin(this.t * 7) * 0.12;
+    this.flag.skew.y = Math.sin(this.t * 5.3) * 0.12;
+  }
+}
+
+// ---------- A container ship passing slowly further out on the river (tap: deep horn) ----------
+export class PassingShip extends Prop {
+  private ship = new Container();
+  private funnel = 0;
+  private cool = 0;
+  private t = 0;
+
+  /** Sails right → left over [x - range, x + range], then slips back in from the right. */
+  constructor(ctx: Ctx, x: number, private range = 1500, private speed = 34) {
+    super(ctx, x, RIVER_Y + 128);
+    this.layer = 'front';
+    const s = 0.5;
+    this.ship.scale.set(s);
+    const g = new Graphics();
+    const len = 820, deck = -70;
+    // Hull: bow on the left (it sails left), superstructure aft on the right.
+    g.ellipse(len / 2, 6, len / 2 + 30, 10).fill({ color: 0x2f6f99, alpha: 0.3 });
+    g.moveTo(-30, deck).lineTo(len, deck).lineTo(len - 6, 0).lineTo(20, 0).quadraticCurveTo(-8, -24, -30, deck).fill(0x2f5d4f);
+    g.moveTo(-6, -18).lineTo(len - 4, -18).lineTo(len - 6, 0).lineTo(20, 0).quadraticCurveTo(6, -8, -6, -18).fill(0xc8473d);
+    g.roundRect(-26, deck, len + 22, 4, 2).fill(lighten(0x2f5d4f, 0.35));
+    const cols = [0xd8564a, 0x2f7fd0, 0xf2b33d, 0x3fa36b, 0xe8833a, 0x8e6bbf, 0x2aa7a0];
+    let k = 0;
+    for (let bx = 60; bx < len - 200; bx += 50) {
+      const rows = 2 + (k % 3 === 1 ? 1 : 0);
+      for (let r = 0; r < rows; r++) {
+        const col = cols[(k * 3 + r * 5) % cols.length];
+        g.roundRect(bx, deck - (r + 1) * 22, 48, 21, 2).fill(col);
+        for (let q = 1; q < 6; q++) g.rect(bx + q * 8, deck - (r + 1) * 22 + 3, 1.5, 15).fill({ color: P.black, alpha: 0.1 });
+      }
+      k++;
+    }
+    block(g, len - 170, deck - 120, 110, 120, P.white, { radius: 6, shade: 0xe4e8ec });
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) g.roundRect(len - 158 + c * 25, deck - 108 + r * 32, 14, 12, 3).fill(0x8fb6d0);
+    g.roundRect(len - 190, deck - 128, 150, 12, 4).fill(P.white);
+    this.funnel = len - 90;
+    block(g, this.funnel - 18, deck - 170, 36, 44, 0xe7e2d8, { radius: 5 });
+    g.roundRect(this.funnel - 18, deck - 158, 36, 10, 3).fill(0xf2b33d);
+    this.ship.addChild(g);
+    this.ship.x = range - len * s;
+    this.view.addChild(this.ship);
+    this.hits = [{ x: 0, y: -125, w: len * s, h: 130 }];
+    this.extent = [-range - 300, range + 700];
+  }
+
+  hintTarget(): Container {
+    return this.ship;
+  }
+
+  onTap(): void {
+    this.ctx.tweens.wobble(this.ship, 0.01, 0.9, 0.02);
+    if (this.cool > 0) return;
+    this.cool = 2;
+    this.ctx.sfx.shipHorn();
+    this.ctx.fx.emit(this.ctx.layers.fx, {
+      x: this.x + this.ship.x + this.funnel * 0.5, y: this.y - 122, count: 8, shape: 'circle', tint: [P.white, 0xe6e9ee],
+      speed: [30, 90], angle: [-2.0, -1.3], gravity: -50, drag: 0.8, life: [1.2, 1.8], size: [12, 20], grow: 2.2, alpha: 0.8,
+    });
+  }
+
+  update(dt: number): void {
+    this.t += dt;
+    this.cool = Math.max(0, this.cool - dt);
+    this.ship.x -= this.speed * dt;
+    this.ship.y = Math.sin(this.t * 0.8) * 1.5;
+    const w = 820 * 0.5;
+    // Fade out past the left end and come back in from the right.
+    this.ship.alpha = Math.max(0, Math.min(1, (this.ship.x + w + this.range) / 300, (this.range - this.ship.x) / 300));
+    if (this.ship.x + w < -this.range) this.ship.x = this.range;
+    this.hits[0].x = this.ship.x;
   }
 }
 
@@ -341,21 +511,28 @@ export function buildSavannah(ctx: Ctx, x0: number = SAVANNAH_X0): CitySet {
   let x = x0 + 650;
   let i = 0;
   const widths = [250, 300, 220, 260, 280, 240, 290];
+  const hallX = x0 + 1350;
   while (x < x0 + 2650) {
     const w = widths[i % widths.length];
+    // Leave a gap so City Hall stands on the street with its whole front showing.
+    if (x + w > hallX - 128 && x < hallX + 128) {
+      x = hallX + 134;
+      continue;
+    }
     props.push(new Warehouse(ctx, x, w, 3 + (i % 3 === 1 ? 1 : 0), BRICKS[i % BRICKS.length], i, i === 3));
     x += w + 6;
     i++;
   }
-  // City Hall's gold dome rises behind the warehouses.
-  props.push(new CityHall(ctx, x0 + 1350));
+  // City Hall stands in its own gap in the row, gold dome on top.
+  props.push(new CityHall(ctx, hallX));
 
   // The river with the Waving Girl and a riverboat (near side).
   props.push(new RiverBand(ctx, x0 + 300, 3000));
-  const boat = new Riverboat(ctx, x0 + 1900);
+  const ship = new PassingShip(ctx, x0 + 1800, 1500);
+  const boat = new Riverboat(ctx, x0 + 1900, 1250);
   const girl = new WavingGirl(ctx, x0 + 900);
   girl.boats.push(boat);
-  props.push(boat, girl);
+  props.push(ship, boat, girl);
 
   // Squares: live oaks and gas lamps around the cathedral.
   props.push(new Cathedral(ctx, x0 + 3800));

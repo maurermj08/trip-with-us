@@ -8,6 +8,7 @@ import { ease } from '../../core/Tween';
 import { rand } from '../../core/rng';
 import { WALK } from './common';
 import { CITY_LAYOUT, WORLD_END, type CitySpec } from '../../world/Route';
+import { ROAD_FAR, ROAD_NEAR } from '../../world/Road';
 
 // ---------- End of the road: a grassy turnaround ----------
 export class EndPark extends Prop {
@@ -222,8 +223,25 @@ export function launchFirework(ctx: Ctx, x: number, targetY: number): void {
 }
 
 
-/** The ending at the final city: the family by the door and the grassy turnaround past it. */
+// ---------- The stop line: a solid white bar across the road where the trip ends ----------
+export class StopLine extends Prop {
+  private bar = new Graphics();
+  constructor(ctx: Ctx, x: number) {
+    super(ctx, x, 0);
+    this.layer = 'roadDecor';
+    this.bar.roundRect(-8, ROAD_FAR + 3, 16, ROAD_NEAR - ROAD_FAR - 6, 3).fill(P.white);
+    this.bar.roundRect(-8, ROAD_FAR + 3, 5, ROAD_NEAR - ROAD_FAR - 6, 2).fill({ color: P.black, alpha: 0.05 });
+    this.view.addChild(this.bar);
+    this.hits = [{ x: -20, y: ROAD_FAR, w: 40, h: ROAD_NEAR - ROAD_FAR }];
+  }
+  onTap(): void {
+    this.ctx.sfx.ding();
+    this.ctx.tweens.wobble(this.bar, 0, 0.5, 0.15);
+  }
+}
+
+/** The ending at the final city: the family by the door, the stop line and the grassy turnaround past it. */
 export function buildArrival(ctx: Ctx, city: CitySpec, doorX: number): { props: Prop[]; greeters: Greeters } {
   const greeters = new Greeters(ctx, city.x0 + CITY_LAYOUT.greeters, doorX);
-  return { props: [greeters, new EndPark(ctx, WORLD_END + 110, city.state === 'FL')], greeters };
+  return { props: [greeters, new StopLine(ctx, city.x0 + CITY_LAYOUT.stop), new EndPark(ctx, WORLD_END + 110, city.state === 'FL')], greeters };
 }

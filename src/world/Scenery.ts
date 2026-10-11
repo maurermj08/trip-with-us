@@ -7,8 +7,9 @@ import {
   longleafPine, sawPalmetto, cypress, mossyOak,
 } from '../style/shapes';
 import { makeRng, range, pick, type Rng } from '../core/rng';
-import { AIRPORTS, CITIES, WATER_REGIONS, regionAt, skylineAt, type Region, type SkylineStyle } from './Route';
-import { ChunkLayer } from './ChunkLayer';
+import { AIRPORTS, CITIES, REGIONS, WATER_REGIONS, regionAt, skylineAt, type Region, type SkylineStyle } from './Route';
+import { potatoFar, potatoNear, potatoSkyline } from './sceneryPotato';
+import { ChunkLayer, type TickingChunk } from './ChunkLayer';
 
 const isWater = (r: Region) => WATER_REGIONS.has(r);
 
@@ -22,6 +23,9 @@ function flatness(worldX: number): number {
 }
 
 const cityX0 = (id: string) => CITIES.find((c) => c.id === id)!.x0;
+
+/** South Carolina palmettos read shorter and stockier than Florida's palms. */
+const SC_PALM = 0.7;
 
 // ---------- Clouds ----------
 export function cloudLayer(): ChunkLayer {
@@ -160,6 +164,9 @@ export function skylineLayer(): ChunkLayer {
           if (b > 0.55) g.poly([x, base - h + 2, x + w, base - h - 24, x + w, base - h + 2]).fill(P.haze);
           break;
         }
+        case 'potato':
+          w = potatoSkyline(g, x, base, a, b, P.haze);
+          break;
         case 'airport':
           // Long low terminal and hangar roofs.
           if (a < 0.5) {
@@ -194,13 +201,38 @@ export function farLayer(): ChunkLayer {
     const flat = (x: number) => 1 - 0.8 * flatness(x / f);
     const hillY = (x: number) => -130 + 30 * (1 - flat(x)) - (40 * Math.sin(x * 0.0019) + 22 * Math.sin(x * 0.0051 + 1.3)) * flat(x);
     if (isWater(region) || RIVER_CITY.has(region)) {
+      // The St. Johns is broad: its far shore sits higher (eased in and out), so open water still
+      // shows above our barrier while we cross the top of the Main Street bridge.
+      const lift = (x: number) => farRiverLift(x / f);
+      // Near a St. Johns shore that meets dry land, the far bank eases down to the hills' line
+      // (the headland below then covers it), so there is never a vertical step.
+      const stJohns = region === 'river' || region === 'jacksonville';
+      const landAt = (lx: number) => {
+        const r = regionAt(lx / f);
+        return !isWater(r) && !RIVER_CITY.has(r);
+      };
+      const landL = stJohns && landAt(x0 - 600), landR = stJohns && landAt(x0 + 1800);
+      const shore = (x: number) => {
+        let t = 1;
+        if (landL) t = Math.min(t, (x - x0) / 700);
+        if (landR) t = Math.min(t, (x0 + 1200 - x) / 700);
+        t = Math.max(0, Math.min(1, t));
+        return t * t * (3 - 2 * t);
+      };
       const pts: number[] = [];
-      for (let x = x0; x <= x0 + 1200; x += 60) pts.push(x, -110 - 12 * Math.sin(x * 0.003));
+      for (let x = x0; x <= x0 + 1200; x += 30) {
+        const bank = -110 - 12 * Math.sin(x * 0.003) - lift(x);
+        pts.push(x, hillY(x) + (bank - hillY(x)) * shore(x));
+      }
       pts.push(x0 + 1200, 600, x0, 600);
       g.poly(pts).fill(lighten(P.hill, 0.15));
-      g.rect(x0, -95, 1200, 700).fill(lighten(P.water, 0.25));
+      const water: number[] = [];
+      for (let x = x0; x <= x0 + 1200; x += 30) water.push(x, hillY(x) + (-95 - lift(x) - hillY(x)) * shore(x));
+      water.push(x0 + 1200, 700, x0, 700);
+      g.poly(water).fill(lighten(P.water, 0.25));
       for (let k = 0; k < 6; k++) {
-        g.roundRect(x0 + range(rng, 0, 1150), range(rng, -85, -40), range(rng, 20, 50), 3, 1.5).fill({ color: P.white, alpha: 0.5 });
+        const gx = x0 + range(rng, 0, 1150);
+        g.roundRect(gx, range(rng, -85, -40) - lift(gx), range(rng, 20, 50), 3, 1.5).fill({ color: P.white, alpha: 0.5 });
       }
       return g;
     }
@@ -217,7 +249,8 @@ export function farLayer(): ChunkLayer {
       }
       return g;
     }
-    farFlorida(g, x0, region, rng, hillY);
+    if (region === 'potatoWorld') potatoFar(g, x0, rng, hillY);
+    else farFlorida(g, x0, region, rng, hillY);
     return g;
   });
 }
@@ -315,9 +348,9 @@ export function nearLayer(): ChunkLayer {
       case 'marsh': marsh(g, x0, rng); break;
       case 'harbor': harbor(g, x0, rng); break;
       case 'charleston': charlestonBack(g, x0, rng); break;
-      case 'port': port(g, x0, rng); break;
+      case 'port': port(c, g, x0, rng); break;
       case 'savannah': savannahBack(g, x0, rng); break;
-      case 'gaCoast': gaCoast(g, x0, rng); break;
+      case 'gaCoast': gaCoast(c, g, x0, rng); break;
       case 'river': river(g, x0, rng); break;
       case 'jacksonville': downtown(g, x0, rng, JAX_GLASS, 160, 380); break;
       case 'flatwoods': flatwoods(g, x0, rng); break;
@@ -327,6 +360,7 @@ export function nearLayer(): ChunkLayer {
       case 'airport': airportBack(g, x0, rng); break;
       case 'floridaSuburb': floridaSuburb(g, x0, rng); break;
       case 'orlando': downtown(g, x0, rng, ORLANDO_GLASS, 150, 340); break;
+      case 'potatoWorld': potatoNear(g, x0, rng, NEAR_BASE); break;
     }
     return c;
   });
@@ -468,7 +502,7 @@ function lowcountry(g: Graphics, x0: number, rng: Rng): void {
   while (x < x0 + 900) {
     const r = rng();
     if (r < 0.45) {
-      palmetto(g, x, NEAR_BASE, range(rng, 140, 220), range(rng, -0.4, 0.4));
+      palmetto(g, x, NEAR_BASE, range(rng, 140, 220) * SC_PALM, range(rng, -0.4, 0.4));
       x += range(rng, 50, 110);
     } else if (r < 0.75) {
       liveOak(g, x + 60, NEAR_BASE, range(rng, 140, 200));
@@ -493,7 +527,7 @@ function marsh(g: Graphics, x0: number, rng: Rng): void {
     const w = range(rng, 120, 260);
     g.roundRect(x, NEAR_BASE - 4, w, 30, 10).fill(0xa7c46c);
     marshGrass(g, x + 6, NEAR_BASE + 2, w - 12);
-    if (rng() < 0.5) palmetto(g, x + w * 0.5, NEAR_BASE - 2, range(rng, 130, 190), range(rng, -0.3, 0.3));
+    if (rng() < 0.5) palmetto(g, x + w * 0.5, NEAR_BASE - 2, range(rng, 130, 190) * SC_PALM, range(rng, -0.3, 0.3));
     if (rng() < 0.25) egret(g, x + w * 0.8, NEAR_BASE + 4);
     x += w + range(rng, 40, 160);
   }
@@ -523,7 +557,7 @@ function charlestonBack(g: Graphics, x0: number, rng: Rng): void {
   let x = x0 + range(rng, 0, 40);
   while (x < x0 + 880) {
     if (rng() < 0.3) {
-      palmetto(g, x + 20, NEAR_BASE, range(rng, 150, 210), range(rng, -0.3, 0.3));
+      palmetto(g, x + 20, NEAR_BASE, range(rng, 150, 210) * SC_PALM, range(rng, -0.3, 0.3));
       x += 60;
       continue;
     }
@@ -539,8 +573,14 @@ function charlestonBack(g: Graphics, x0: number, rng: Rng): void {
 
 const CONTAINERS = [0xd8564a, 0x2f7fd0, 0xf2b33d, 0x3fa36b, 0xe8833a, 0x7a8a99, 0x8e6bbf];
 
+/** Adds an animation step to a near-layer chunk (chunks may hold several animated things). */
+function addTick(c: TickingChunk, fn: (dt: number) => void): void {
+  const prev = c.onTick;
+  c.onTick = prev ? (dt) => (prev(dt), fn(dt)) : fn;
+}
+
 /** Savannah port: a concrete quay with container stacks and big gantry cranes. */
-function port(g: Graphics, x0: number, rng: Rng): void {
+function port(c: TickingChunk, g: Graphics, x0: number, rng: Rng): void {
   const quay = NEAR_BASE - 6;
   g.rect(x0, quay - 4, 900, 26).fill(0xcfcac0);
   g.rect(x0, quay + 18, 900, 5).fill(0xb3ada2);
@@ -557,11 +597,34 @@ function port(g: Graphics, x0: number, rng: Rng): void {
     }
     x += stacks * 62 + range(rng, 60, 200);
   }
-  if (rng() < 0.75) gantryCrane(g, x0 + range(rng, 150, 750), quay - 4, rng() < 0.5 ? 0xd8564a : 0x3f78c4);
+  if (rng() < 0.75) gantryCrane(c, g, x0 + range(rng, 150, 750), quay - 4, rng() < 0.5 ? 0xd8564a : 0x3f78c4);
 }
 
-function gantryCrane(g: Graphics, x: number, base: number, accent: number): void {
+/** Where a scenery crane's trolley and hook are at time t of its 14 s work cycle (container top y). */
+function craneCycle(t: number, quayX: number, shipX: number, top: number, quayY: number, shipY: number): { tx: number; hy: number; carry: boolean } {
+  const s = (a: number, b: number) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, (t - a) / (b - a))));
+  if (t < 1.5) return { tx: quayX, hy: top + (quayY - top) * s(0, 1.5), carry: false };
+  if (t < 2) return { tx: quayX, hy: quayY, carry: true };
+  if (t < 3.5) return { tx: quayX, hy: quayY + (top - quayY) * s(2, 3.5), carry: true };
+  if (t < 6) return { tx: quayX + (shipX - quayX) * s(3.5, 6), hy: top, carry: true };
+  if (t < 7.5) return { tx: shipX, hy: top + (shipY - top) * s(6, 7.5), carry: true };
+  if (t < 8) return { tx: shipX, hy: shipY, carry: false };
+  if (t < 9.5) return { tx: shipX, hy: shipY + (top - shipY) * s(8, 9.5), carry: false };
+  if (t < 12) return { tx: shipX + (quayX - shipX) * s(9.5, 12), hy: top, carry: false };
+  return { tx: quayX, hy: top, carry: false };
+}
+
+function gantryCrane(c: TickingChunk, g: Graphics, x: number, base: number, accent: number): void {
   const white = 0xeef0f2, h = 250;
+  // A little feeder ship moored under the boom tip, with a row of boxes on deck.
+  const deck = base - 30;
+  g.moveTo(x - 250, deck).lineTo(x - 104, deck).lineTo(x - 112, base + 2).lineTo(x - 238, base + 2).closePath().fill(0x2b4a6f);
+  g.rect(x - 246, base - 8, 138, 8).fill(0xc8473d);
+  for (let k = 0; k < 3; k++) {
+    const col = CONTAINERS[(Math.round(x) + k * 3) % CONTAINERS.length];
+    block(g, x - 236 + k * 32, deck - 16, 30, 16, col, { radius: 2 });
+  }
+  block(g, x - 140, deck - 40, 28, 40, P.white, { radius: 3 });
   // legs (two A-frames seen side-on) and the portal beam
   for (const lx of [-50, 50]) g.roundRect(x + lx - 6, base - h, 12, h, 3).fill(white);
   g.roundRect(x - 60, base - h - 4, 120, 16, 4).fill(white);
@@ -575,8 +638,30 @@ function gantryCrane(g: Graphics, x: number, base: number, accent: number): void
   // machinery house and the hanging spreader
   g.roundRect(x - 70, base - h - 22, 52, 28, 4).fill(accent);
   g.roundRect(x - 70, base - h - 22, 52, 3, 1.5).fill({ color: P.white, alpha: 0.45 });
-  g.rect(x - 141, base - h - 16, 2, 110).fill(0x5d6670);
-  g.roundRect(x - 170, base - h + 92, 60, 10, 3).fill(0xf2b33d);
+  // The yard spot between the legs.
+  g.roundRect(x - 34, base - 6, 68, 6, 2).fill(0x8a9099);
+
+  // Moving parts: trolley, cables, spreader and the container it carries; a blinking light.
+  const mov = new Graphics();
+  const light = new Graphics().circle(0, 0, 4).fill(0xe5483f);
+  light.position.set(x - 6, base - h - 88);
+  c.addChild(mov, light);
+  const carryCol = CONTAINERS[Math.abs(Math.round(x / 37)) % CONTAINERS.length];
+  const boomY = base - h - 16;
+  let t = (Math.abs(x) * 0.37) % 14;
+  addTick(c, (dt) => {
+    t = (t + dt) % 14;
+    const { tx, hy, carry } = craneCycle(t, x, x - 200, boomY + 40, base - 30, deck - 30);
+    mov.clear();
+    mov.roundRect(tx - 14, boomY + 10, 28, 9, 3).fill(0x5d6670);
+    for (const dx of [-8, 8]) mov.moveTo(tx + dx, boomY + 18).lineTo(tx + dx * 0.6, hy - 6).stroke({ width: 1.4, color: 0x3a3f45 });
+    mov.roundRect(tx - 32, hy - 6, 64, 6, 2).fill(0xf2b33d);
+    if (carry) {
+      mov.roundRect(tx - 30, hy, 60, 22, 2).fill(carryCol);
+      for (let r = 1; r < 6; r++) mov.rect(tx - 30 + r * 10, hy + 3, 1.5, 16).fill({ color: P.black, alpha: 0.1 });
+    }
+    light.alpha = Math.sin(t * Math.PI * 1.4) > 0 ? 1 : 0.25;
+  });
 }
 
 const BRICK = [0xb5654a, 0xa85a44, 0xc47a5a, 0x9c6b52, 0xb8735a];
@@ -610,8 +695,8 @@ function savannahBack(g: Graphics, x0: number, rng: Rng): void {
   }
 }
 
-/** Georgia coast: marsh hammocks with mossy oaks, tidal creeks and shrimp boats. */
-function gaCoast(g: Graphics, x0: number, rng: Rng): void {
+/** Georgia coast: marsh hammocks with mossy oaks, tidal creeks and shrimp boats (they bob). */
+function gaCoast(c: TickingChunk, g: Graphics, x0: number, rng: Rng): void {
   let x = x0;
   while (x < x0 + 900) {
     const w = range(rng, 160, 320);
@@ -622,7 +707,28 @@ function gaCoast(g: Graphics, x0: number, rng: Rng): void {
     if (rng() < 0.25) egret(g, x + w * 0.85, NEAR_BASE + 4);
     x += w;
     const gap = range(rng, 80, 220);
-    if (rng() < 0.35) shrimpBoat(g, x + gap / 2, NEAR_BASE - 2, rng);
+    const r = rng();
+    if (r < 0.35) {
+      // Each boat is its own child so it can rock on the creek. Only a few small, distant
+      // ones: the tappable hero shrimp boats (landmarks/FishingBoats.ts) sit in front.
+      const boat = new Graphics();
+      shrimpBoat(boat, 0, 0, rng); // always drawn, so the rng sequence stays the same
+      if (r >= 0.14) {
+        boat.destroy();
+        x += gap;
+        continue;
+      }
+      boat.scale.set(0.7);
+      boat.position.set(x + gap / 2, NEAR_BASE - 6);
+      c.addChild(boat);
+      let t = x * 0.013;
+      const y0 = boat.y;
+      addTick(c, (dt) => {
+        t += dt;
+        boat.y = y0 + Math.sin(t * 1.7) * 2;
+        boat.rotation = Math.sin(t * 1.1) * 0.025;
+      });
+    }
     x += gap;
   }
 }
@@ -641,26 +747,73 @@ function shrimpBoat(g: Graphics, x: number, y: number, rng: Rng): void {
   }
 }
 
-/** The St. Johns River: open water with the odd tug or sailboat and old pilings. */
+/** The St. Johns River: a broad, level band of open water (its shores taper in at both ends of
+ * the region) with the odd tug or sailboat and old pilings. */
+const RIVER_SPAN = (() => {
+  const i = REGIONS.findIndex(([, r]) => r === 'river');
+  return { a: REGIONS[i][0], b: REGIONS[i + 1][0] };
+})();
+/** How much higher the far shore sits over the St. Johns (world x): level across the river and
+ * downtown Jacksonville, easing back down behind the last downtown buildings; 0 elsewhere. */
+const JAX_END = (() => {
+  const i = REGIONS.findIndex(([, r]) => r === 'jacksonville');
+  return REGIONS[i + 1][0];
+})();
+function farRiverLift(wx: number): number {
+  if (wx < RIVER_SPAN.a - 2000 || wx > JAX_END) return 0;
+  const t = Math.max(0, Math.min(1, (JAX_END - wx) / 1600));
+  return 70 * t * t * (3 - 2 * t);
+}
+
+/** Near-layer water top at layer x (0.82 parallax): high and level mid-river, easing down at the shores. */
+function riverTop(lx: number): { y: number; full: number } {
+  const wx = lx / 0.82;
+  const d = Math.min(wx - RIVER_SPAN.a, RIVER_SPAN.b - wx);
+  const t = Math.max(0, Math.min(1, d / 1600));
+  const e = t * t * (3 - 2 * t);
+  return { y: NEAR_BASE - 8 - 46 * e, full: e };
+}
+
 function river(g: Graphics, x0: number, rng: Rng): void {
+  // the water band (the generic water rect below covers from NEAR_BASE - 8 down)
+  const pts: number[] = [];
+  for (let x = x0; x <= x0 + 900; x += 30) pts.push(x, riverTop(x).y);
+  pts.push(x0 + 900, NEAR_BASE, x0, NEAR_BASE);
+  g.poly(pts).fill(P.water);
+  // a soft lighter far edge where the water meets the far layer
+  const edge: number[] = [];
+  for (let x = x0; x <= x0 + 900; x += 30) edge.push(x, riverTop(x).y);
+  for (let x = x0 + 900; x >= x0; x -= 30) edge.push(x, riverTop(x).y + 4);
+  g.poly(edge).fill({ color: P.white, alpha: 0.35 });
   for (let k = 0; k < 3; k++) {
     const px = x0 + range(rng, 0, 880);
-    g.roundRect(px, NEAR_BASE - 12, 8, 30, 3).fill(0x8a6a4e);
+    const top = riverTop(px).y;
+    g.roundRect(px, top + 12, 8, NEAR_BASE - top - 4, 3).fill(0x8a6a4e);
+    g.ellipse(px + 4, top + 12, 4, 1.5).fill(0xa7845f);
   }
   const r = rng();
-  if (r < 0.4) tug(g, x0 + range(rng, 150, 750), NEAR_BASE - 4);
-  else if (r < 0.75) sailboat(g, x0 + range(rng, 100, 800), NEAR_BASE - 6, range(rng, 0.8, 1.1), rng);
+  const bx = x0 + range(rng, r < 0.4 ? 150 : 100, r < 0.4 ? 750 : 800);
+  const bt = riverTop(bx);
+  // Boats only where the river is wide open (never on a thin strip near the shores).
+  if (r < 0.4) {
+    if (bt.full > 0.95) tug(g, bx, bt.y + 32);
+  } else if (r < 0.75) {
+    const sc = range(rng, 0.8, 1.1);
+    if (bt.full > 0.95) sailboat(g, bx, bt.y + 30, sc, rng);
+  }
 }
 
 function tug(g: Graphics, x: number, y: number): void {
-  cornerRect(g, x - 44, y - 16, 88, 18, 3, 3, 12, 12).fill(0xd8392b);
-  g.rect(x - 44, y - 8, 88, 3).fill(0x24262a);
-  block(g, x - 20, y - 40, 40, 24, P.white, { radius: 3 });
-  block(g, x - 12, y - 56, 24, 16, P.white, { radius: 3 });
-  g.roundRect(x - 8, y - 52, 16, 7, 2).fill(0x8fb6d0);
-  g.roundRect(x + 10, y - 66, 8, 22, 2).fill(0x24262a);
-  g.roundRect(x + 10, y - 66, 8, 5, 2).fill(0xd8392b);
-  for (const tx of [-36, 36]) g.circle(x + tx, y - 6, 5).fill(0x24262a);
+  // hull with a raked bow (to +x), a black rub rail, white cabin + wheelhouse and a stack
+  g.poly([x - 44, y - 16, x + 34, y - 16, x + 48, y - 22, x + 40, y - 2, x - 40, y - 2]).fill(0xd8392b);
+  g.rect(x - 44, y - 12, 84, 3).fill(0x24262a);
+  block(g, x - 26, y - 38, 40, 22, P.white, { radius: 3 });
+  block(g, x - 18, y - 54, 26, 16, P.white, { radius: 3 });
+  g.roundRect(x - 14, y - 50, 18, 7, 2).fill(0x8fb6d0);
+  g.roundRect(x + 2, y - 66, 8, 22, 2).fill(0x24262a);
+  g.roundRect(x + 2, y - 66, 8, 5, 2).fill(0xd8392b);
+  // a little bow wave
+  g.ellipse(x + 30, y - 1, 22, 3).fill({ color: P.white, alpha: 0.6 });
 }
 
 const JAX_GLASS = [0x9fc3dc, 0xb7cfe0, 0x8fb3cf, 0xd7dde3, 0xe7d8c6, 0xc7b6a6];
@@ -855,7 +1008,7 @@ export function foregroundLayer(): ChunkLayer {
   });
 }
 
-const FL_FOREGROUND = new Set<Region>(['flatwoods', 'citrus', 'pasture', 'airport', 'floridaSuburb', 'orlando', 'jacksonville', 'gaCoast']);
+const FL_FOREGROUND = new Set<Region>(['flatwoods', 'citrus', 'pasture', 'airport', 'floridaSuburb', 'orlando', 'jacksonville', 'gaCoast', 'potatoWorld']);
 
 function bush(g: Graphics, x: number, y: number, w: number, c: number): void {
   g.circle(x - w * 0.25, y - w * 0.22, w * 0.3).fill(c);
