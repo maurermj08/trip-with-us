@@ -11,7 +11,8 @@ import { ease } from '../core/Tween';
 import { rand } from '../core/rng';
 
 /** Waterline: a little above the barrier top (-72) so the whole hull shows over it. */
-const WATER_Y = -96;
+/** Waterline: just above the barrier top (-72), level with the scenery water behind it. */
+const WATER_Y = -78;
 const ROPE = 0x6b5a4a;
 const NET = 0x9aa3ad;
 
@@ -75,13 +76,8 @@ export class ShrimpBoat extends Prop {
     super(ctx, x, WATER_Y);
     this.layer = 'back';
 
-    // A patch of open water under the boat so it always reads as floating (even over marsh).
-    const water = new Graphics();
-    // (it runs down behind the barrier, where it meets the far water)
-    water.roundRect(-200, -7, 400, 40, 14).fill(P.water);
-    water.roundRect(-160, 8, 320, 24, 10).fill(P.waterDeep);
-    for (const [rx, ry, rw] of [[-170, 0, 50], [100, 3, 60], [-40, 12, 40], [40, 18, 30]]) water.roundRect(rx, ry, rw, 2.5, 1.25).fill({ color: P.white, alpha: 0.5 });
-    this.waterBack.addChild(water);
+    // The boat floats in the scenery water behind the barrier (no water patch of its own,
+    // which made it look like it hovered above the river).
     this.view.addChild(this.waterBack, this.wakeBack);
 
     // The boat (facing `dir`): rigging behind, then booms, hull, cabin.
