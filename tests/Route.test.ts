@@ -39,7 +39,7 @@ describe('Route', () => {
   });
 
   it('cities are in order, do not overlap, and each starts where its bridge ends', () => {
-    expect(CITIES.map((c) => c.id)).toEqual(['charleston', 'savannah', 'jacksonville', 'orlando', 'potato-world']);
+    expect(CITIES.map((c) => c.id)).toEqual(['new-york', 'washington', 'richmond', 'charleston', 'savannah', 'jacksonville', 'orlando', 'potato-world']);
     for (let i = 1; i < CITIES.length; i++) expect(CITIES[i].x0).toBeGreaterThan(CITIES[i - 1].x0 + CITIES[i - 1].len);
     expect(CITIES.filter((c) => c.final).map((c) => c.id)).toEqual(['potato-world']);
     for (const c of CITIES.filter((cc) => cc.bridge)) {
@@ -76,16 +76,32 @@ describe('Route', () => {
 
   it('signs sit in the right legs', () => {
     const welcome = (st: string) => ROUTE.find((p) => p.kind === 'welcome' && p.state === st)!.x;
-    expect(welcome('SC')).toBeLessThan(CITIES[0].x0);
-    expect(welcome('GA')).toBeGreaterThan(CITIES[0].x0);
-    expect(welcome('GA')).toBeLessThan(CITIES[1].x0 + CITIES[1].len);
-    expect(welcome('FL')).toBeGreaterThan(CITIES[1].x0);
-    expect(welcome('FL')).toBeLessThan(CITIES[2].x0);
+    const city = (id: string) => CITIES.find((c) => c.id === id)!;
+    // Driving south: NY, NJ, MD, DC, VA, NC, SC, GA, FL, in that order.
+    const order = ['NY', 'NJ', 'MD', 'DC', 'VA', 'NC', 'SC', 'GA', 'FL'].map(welcome);
+    for (let i = 1; i < order.length; i++) expect(order[i]).toBeGreaterThan(order[i - 1]);
+    expect(welcome('NY')).toBeLessThan(city('new-york').x0);
+    expect(welcome('DC')).toBeLessThan(city('washington').x0);
+    expect(welcome('VA')).toBeGreaterThan(city('washington').x0);
+    expect(welcome('VA')).toBeLessThan(city('richmond').x0);
+    expect(welcome('NC')).toBeGreaterThan(city('richmond').x0);
+    expect(welcome('SC')).toBeLessThan(city('charleston').x0);
+    expect(welcome('GA')).toBeGreaterThan(city('charleston').x0);
+    expect(welcome('GA')).toBeLessThan(city('savannah').x0 + city('savannah').len);
+    expect(welcome('FL')).toBeGreaterThan(city('savannah').x0);
+    expect(welcome('FL')).toBeLessThan(city('jacksonville').x0);
     for (const g of ROUTE.filter((p) => p.kind === 'guide' && p.city !== 'airport' && p.city !== 'downtown-orlando')) {
-      const city = CITIES.find((c) => c.id === g.city)!;
-      const prev = CITIES[CITIES.indexOf(city) - 1];
-      expect(g.x).toBeLessThan(city.x0);
+      const c = city(g.city!);
+      const prev = CITIES[CITIES.indexOf(c) - 1];
+      expect(g.x).toBeLessThan(c.x0);
       if (prev) expect(g.x).toBeGreaterThan(prev.x0);
+    }
+  });
+
+  it('every set piece stays off bridges and out of city streets', () => {
+    for (const p of ROUTE.filter((q) => q.kind !== 'welcome' && q.kind !== 'ramp' && q.kind !== 'mile')) {
+      const z = zoneAt(p.x);
+      if (z && (z.kind === 'bridge' || z.kind === 'city')) throw new Error(`${p.kind} at ${p.x} is in ${z.id}`);
     }
   });
 

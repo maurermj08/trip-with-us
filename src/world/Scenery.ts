@@ -8,6 +8,7 @@ import {
 } from '../style/shapes';
 import { makeRng, range, pick, type Rng } from '../core/rng';
 import { AIRPORTS, CITIES, REGIONS, WATER_REGIONS, regionAt, skylineAt, type Region, type SkylineStyle } from './Route';
+import { TRIP_SHIFT } from './trip/shift';
 import { potatoFar, potatoNear, potatoSkyline } from './sceneryPotato';
 import { ChunkLayer, type TickingChunk } from './ChunkLayer';
 
@@ -18,7 +19,7 @@ const LEG1 = new Set<Region>(['suburb', 'pines', 'farm', 'town', 'duckies', 'low
 
 /** Florida is flat: 0 up to the Georgia coast, easing to 1 across the state line. */
 function flatness(worldX: number): number {
-  const t = Math.max(0, Math.min(1, (worldX - 210000) / 16000));
+  const t = Math.max(0, Math.min(1, (worldX - TRIP_SHIFT - 210000) / 16000));
   return t * t * (3 - 2 * t);
 }
 
@@ -46,8 +47,13 @@ export function cloudLayer(): ChunkLayer {
 // that city is near, never over the farmland next to it.
 
 /** Landmark silhouettes at fixed world x (drawn into whichever chunks they overlap). */
-type SkyMark = 'dome' | 'twin-spires' | 'crown-tower' | 'slab-tower' | 'wheel' | 'spire-tower' | 'control-tower';
+type SkyMark = 'dome' | 'twin-spires' | 'crown-tower' | 'slab-tower' | 'wheel' | 'spire-tower' | 'control-tower'
+  | 'empire' | 'chrysler' | 'one-wtc' | 'capitol' | 'obelisk';
 const SKY_MARKS: [number, SkyMark][] = [
+  // New York: the tallest skyline of the trip. (The Empire State and Chrysler are real props in
+  // the city, so the haze only adds Downtown's spire; each famous building appears once.)
+  [cityX0('new-york') + 9800, 'one-wtc'],
+  // Washington: no haze landmarks at all; the Capitol and the Monument are the city's own props.
   [cityX0('savannah') + 1800, 'dome'],
   [cityX0('savannah') + 3300, 'twin-spires'],
   [cityX0('jacksonville') + 1400, 'crown-tower'],
@@ -104,6 +110,44 @@ function skyMark(g: Graphics, kind: SkyMark, x: number, base: number): void {
       g.circle(x, cy, 14).fill(c);
       break;
     }
+    case 'empire':
+      // stepped Art Deco setbacks up to the mast
+      g.roundRect(x - 70, base - 330, 140, 430, 6).fill(c);
+      g.roundRect(x - 50, base - 440, 100, 120, 5).fill(c);
+      g.roundRect(x - 34, base - 500, 68, 70, 4).fill(c);
+      g.roundRect(x - 20, base - 540, 40, 46, 4).fill(c);
+      g.roundRect(x - 11, base - 572, 22, 36, 4).fill(c);
+      g.poly([x - 7, base - 570, x, base - 640, x + 7, base - 570]).fill(c);
+      break;
+    case 'chrysler': {
+      g.roundRect(x - 50, base - 380, 100, 480, 6).fill(c);
+      // the terraced crown of nested arches, then the needle
+      for (let k = 0; k < 5; k++) {
+        const w = 44 - k * 8, y = base - 380 - k * 22;
+        g.moveTo(x - w, y + 4).quadraticCurveTo(x - w, y - 24, x, y - 30).quadraticCurveTo(x + w, y - 24, x + w, y + 4).closePath().fill(c);
+      }
+      g.poly([x - 4, base - 480, x, base - 560, x + 4, base - 480]).fill(c);
+      break;
+    }
+    case 'one-wtc':
+      // a tapering glass obelisk with a spire
+      g.poly([x - 62, base + 40, x - 58, base - 340, x - 30, base - 470, x + 30, base - 470, x + 58, base - 340, x + 62, base + 40]).fill(c);
+      g.roundRect(x - 26, base - 482, 52, 16, 3).fill(c);
+      g.roundRect(x - 2.5, base - 600, 5, 124, 2).fill(c);
+      break;
+    case 'capitol':
+      // wide wings, a columned drum and the big dome with the statue on top
+      g.roundRect(x - 190, base - 80, 380, 180, 6).fill(c);
+      g.roundRect(x - 70, base - 120, 140, 50, 5).fill(c);
+      g.roundRect(x - 52, base - 170, 104, 56, 5).fill(c);
+      g.moveTo(x - 50, base - 168).quadraticCurveTo(x - 50, base - 250, x, base - 258).quadraticCurveTo(x + 50, base - 250, x + 50, base - 168).closePath().fill(c);
+      g.roundRect(x - 10, base - 290, 20, 34, 4).fill(c);
+      g.roundRect(x - 3, base - 312, 6, 24, 2).fill(c);
+      break;
+    case 'obelisk':
+      g.poly([x - 20, base + 40, x - 15, base - 420, x + 15, base - 420, x + 20, base + 40]).fill(c);
+      g.poly([x - 15, base - 420, x, base - 452, x + 15, base - 420]).fill(c);
+      break;
     case 'control-tower':
       g.poly([x - 11, base + 40, x - 7, base - 110, x + 7, base - 110, x + 11, base + 40]).fill(c);
       g.roundRect(x - 24, base - 136, 48, 30, 7).fill(c);
@@ -167,6 +211,32 @@ export function skylineLayer(): ChunkLayer {
         case 'potato':
           w = potatoSkyline(g, x, base, a, b, P.haze);
           break;
+        case 'nyc': {
+          // Manhattan: narrow, tall and packed, with setbacks, spires and the odd low block.
+          w = 34 + 46 * a;
+          const h = 150 + 290 * b * b;
+          g.roundRect(x, base - h, w, h + 100, 5).fill(P.haze);
+          if (b > 0.55) g.roundRect(x + w * 0.18, base - h - 34, w * 0.64, 38, 4).fill(P.haze);
+          if (b > 0.8) g.roundRect(x + w / 2 - 2, base - h - 80, 4, 50, 2).fill(P.haze);
+          w -= 6; // buildings shoulder to shoulder
+          break;
+        }
+        case 'dc': {
+          // No skyscrapers: long low government blocks and rows of trees.
+          w = 90 + 110 * a;
+          const h = 34 + 46 * b;
+          g.roundRect(x, base - h, w, h + 100, 6).fill(P.haze);
+          // (plain flat roofs, never domes: the famous buildings are the city's own props)
+          if (b < 0.3) for (let k = 0; k < 3; k++) g.circle(x + w * (0.2 + k * 0.3), base - h - 6, 16).fill(P.haze);
+          break;
+        }
+        case 'richmond': {
+          w = 45 + 65 * a;
+          const h = 70 + 170 * b;
+          g.roundRect(x, base - h, w, h + 100, 6).fill(P.haze);
+          if (b > 0.75) g.poly([x, base - h + 2, x + w / 2, base - h - 30, x + w, base - h + 2]).fill(P.haze);
+          break;
+        }
         case 'airport':
           // Long low terminal and hangar roofs.
           if (a < 0.5) {
@@ -234,6 +304,7 @@ export function farLayer(): ChunkLayer {
         const gx = x0 + range(rng, 0, 1150);
         g.roundRect(gx, range(rng, -85, -40) - lift(gx), range(rng, 20, 50), 3, 1.5).fill({ color: P.white, alpha: 0.5 });
       }
+      if (NE_REGIONS.has(region)) farNortheastShore(g, x0, region, rng);
       return g;
     }
     const pts: number[] = [];
@@ -249,7 +320,8 @@ export function farLayer(): ChunkLayer {
       }
       return g;
     }
-    if (region === 'potatoWorld') potatoFar(g, x0, rng, hillY);
+    if (NE_REGIONS.has(region)) farNortheast(g, x0, region, rng, hillY);
+    else if (region === 'potatoWorld') potatoFar(g, x0, rng, hillY);
     else farFlorida(g, x0, region, rng, hillY);
     return g;
   });
@@ -345,7 +417,8 @@ export function nearLayer(): ChunkLayer {
       case 'town': town(g, x0, rng); break;
       case 'duckies': for (let x = x0 + 100; x < x0 + 900; x += range(rng, 200, 400)) roundTree(g, x, NEAR_BASE, range(rng, 90, 140)); break;
       case 'lowcountry': lowcountry(g, x0, rng); break;
-      case 'marsh': marsh(g, x0, rng); break;
+      // (the Chesapeake marsh on the north-east legs has no palmettos)
+      case 'marsh': if (x0 / f < TRIP_SHIFT) chesapeakeMarsh(g, x0, rng); else marsh(g, x0, rng); break;
       case 'harbor': harbor(g, x0, rng); break;
       case 'charleston': charlestonBack(g, x0, rng); break;
       case 'port': port(c, g, x0, rng); break;
@@ -361,6 +434,13 @@ export function nearLayer(): ChunkLayer {
       case 'floridaSuburb': floridaSuburb(g, x0, rng); break;
       case 'orlando': downtown(g, x0, rng, ORLANDO_GLASS, 150, 340); break;
       case 'potatoWorld': potatoNear(g, x0, rng, NEAR_BASE); break;
+      case 'hudson': hudson(c, g, x0, rng); break;
+      case 'nyc': nycBack(g, x0, rng); break;
+      case 'industrial': industrial(c, g, x0, rng); break;
+      case 'potomac': potomac(c, g, x0, rng); break;
+      case 'dc': dcBack(g, x0, rng); break;
+      case 'jamesRiver': jamesRiver(c, g, x0, rng); break;
+      case 'richmond': richmondBack(g, x0, rng); break;
     }
     return c;
   });
@@ -984,7 +1064,7 @@ export function foregroundLayer(): ChunkLayer {
     let x = x0 + range(rng, 0, 200);
     while (x < x0 + 1000) {
       const y = range(rng, 215, 250);
-      if (region === 'harbor' || region === 'river' || region === 'gaCoast' || region === 'lakes') {
+      if (region === 'harbor' || region === 'river' || region === 'gaCoast' || region === 'lakes' || region === 'hudson' || region === 'potomac' || region === 'jamesRiver') {
         // reeds poking up from the water's edge
         for (let k = 0; k < 6; k++) g.roundRect(x + k * 7, y - 30 - (k % 3) * 8, 4, 40 + (k % 3) * 8, 2).fill(k % 2 ? 0xa7b85f : 0x93a653);
       } else if (!LEG1.has(region) && FL_FOREGROUND.has(region) && rng() < 0.6) {
@@ -1016,4 +1096,384 @@ function bush(g: Graphics, x: number, y: number, w: number, c: number): void {
   g.circle(x, y - w * 0.36, w * 0.34).fill(c);
   g.circle(x - w * 0.12, y - w * 0.5, w * 0.12).fill({ color: P.white, alpha: 0.12 });
   g.rect(x - w * 0.5, y - w * 0.2, w, w * 0.4).fill(c);
+}
+
+// ---------- The north-east: the Hudson, New York, the NJ Turnpike, the Potomac, DC, Richmond ----------
+
+/** Regions of the north-east legs (they get their own far/near generators). */
+const NE_REGIONS = new Set<Region>(['hudson', 'nyc', 'industrial', 'potomac', 'dc', 'jamesRiver', 'richmond']);
+
+const NE_TREE = 0x86bf72;
+const CHERRY = [0xf7c6d4, 0xf3b3c6, 0xfad6df];
+
+/** Far shore across the north-east rivers: the Palisades cliffs on the Hudson, wooded banks elsewhere. */
+function farNortheastShore(g: Graphics, x0: number, region: Region, rng: Rng): void {
+  if (region === 'hudson') {
+    // The Palisades: a long wall of rust-grey basalt cliffs with woods along the top.
+    const top: number[] = [];
+    for (let x = x0; x <= x0 + 1200; x += 30) top.push(x, -190 - 14 * Math.sin(x * 0.004) - 8 * Math.sin(x * 0.013 + 1));
+    g.poly([...top, x0 + 1200, -104, x0, -104]).fill(0xa8a09a);
+    for (let x = x0 + range(rng, 0, 30); x < x0 + 1200; x += range(rng, 26, 46)) {
+      g.rect(x, -186 - 12 * Math.sin(x * 0.004), range(rng, 3, 6), 70).fill({ color: 0x8c847f, alpha: 0.7 });
+    }
+    for (let x = x0; x < x0 + 1200; x += range(rng, 18, 30)) g.circle(x, -196 - 14 * Math.sin(x * 0.004), range(rng, 12, 20)).fill(NE_TREE);
+    g.rect(x0, -106, 1200, 6).fill(0x9e9690);
+    return;
+  }
+  // Potomac and James: a wooded far bank.
+  for (let x = x0 + range(rng, 0, 20); x < x0 + 1200; x += range(rng, 20, 40)) {
+    g.circle(x, -116 - 6 * Math.sin(x * 0.01), range(rng, 12, 20)).fill(NE_TREE);
+  }
+  if (region === 'jamesRiver') {
+    for (let k = 0; k < 4; k++) g.ellipse(x0 + range(rng, 0, 1200), range(rng, -80, -50), range(rng, 14, 30), 6).fill(0xb9b2aa);
+  }
+}
+
+/** Far-layer silhouettes over the north-east land regions. */
+function farNortheast(g: Graphics, x0: number, region: Region, rng: Rng, hillY: (x: number) => number): void {
+  const c = P.hillTree;
+  switch (region) {
+    case 'nyc':
+      // the outer boroughs: a packed band of rooftops
+      for (let x = x0 + range(rng, 0, 30); x < x0 + 1200; ) {
+        const w = range(rng, 24, 60), h = range(rng, 20, 90);
+        g.roundRect(x, hillY(x) - h + 10, w, h + 30, 3).fill(lighten(P.haze, 0.05));
+        x += w + range(rng, 2, 10);
+      }
+      break;
+    case 'industrial':
+      // tank farms and stacks on the horizon
+      for (let k = 0; k < 7; k++) {
+        const x = x0 + range(rng, 0, 1150), y = hillY(x) + 10;
+        if (rng() < 0.6) {
+          const r = range(rng, 16, 30);
+          g.roundRect(x - r, y - r * 1.1, r * 2, r * 1.1 + 10, 4).fill(lighten(P.haze, 0.05));
+        } else g.rect(x - 4, y - range(rng, 60, 110), 8, 120).fill(lighten(P.haze, 0.05));
+      }
+      break;
+    case 'dc':
+    case 'richmond':
+    default:
+      for (let k = 0; k < 12; k++) {
+        const x = x0 + range(rng, 0, 1200);
+        g.circle(x, hillY(x) + 6, range(rng, 12, 24)).fill(region === 'dc' && rng() < 0.3 ? 0xe9bfcc : c);
+      }
+      if (region === 'dc' && rng() < 0.5) {
+        // a plain, flat-roofed block among the trees (no domes)
+        const x = x0 + range(rng, 100, 1100);
+        g.roundRect(x - 30, hillY(x) - 18, 60, 30, 4).fill(lighten(P.haze, 0.08));
+      }
+  }
+}
+
+/** A small boat that bobs on the near-layer water. */
+function bobbing(c: TickingChunk, boat: Graphics, x: number, y: number): void {
+  boat.position.set(x, y);
+  c.addChild(boat);
+  let t = x * 0.017;
+  addTick(c, (dt) => {
+    t += dt;
+    boat.y = y + Math.sin(t * 1.6) * 2;
+    boat.rotation = Math.sin(t * 1.05) * 0.02;
+  });
+}
+
+/** A river ferry / tour boat (no face): long white hull, two decks, a striped funnel. */
+function ferry(g: Graphics, s: number, hull: number): void {
+  cornerRect(g, -70 * s, -16 * s, 140 * s, 18 * s, 2, 2, 12 * s, 12 * s).fill(hull);
+  g.rect(-70 * s, -6 * s, 140 * s, 3 * s).fill(0x2f4d7a);
+  block(g, -52 * s, -36 * s, 96 * s, 20 * s, 0xf6f3ea, { radius: 3 });
+  for (let k = 0; k < 7; k++) g.roundRect((-46 + k * 13) * s, -31 * s, 8 * s, 8 * s, 2).fill(0x8fb6d0);
+  block(g, -30 * s, -50 * s, 52 * s, 14 * s, 0xf6f3ea, { radius: 3 });
+  g.roundRect(-6 * s, -66 * s, 12 * s, 18 * s, 3).fill(0xe5483f);
+  g.rect(-6 * s, -60 * s, 12 * s, 4 * s).fill(P.white);
+}
+
+/** The Hudson: broad water with ferries, sailboats and the odd tug (they bob). */
+function hudson(c: TickingChunk, g: Graphics, x0: number, rng: Rng): void {
+  const r = rng();
+  const bx = x0 + range(rng, 120, 780);
+  if (r < 0.35) {
+    const b = new Graphics();
+    ferry(b, range(rng, 0.8, 1), pick(rng, [0xffffff, 0xf2c14e, 0xe8833a]));
+    bobbing(c, b, bx, NEAR_BASE - 4 + range(rng, 0, 6));
+  } else if (r < 0.75) {
+    const b = new Graphics();
+    sailboat(b, 0, 0, range(rng, 0.7, 1), rng);
+    bobbing(c, b, bx, NEAR_BASE - 4 + range(rng, 0, 6));
+  }
+  // little sparkles drift on the water
+  sparkles(c, x0, rng);
+}
+
+function sparkles(c: TickingChunk, x0: number, rng: Rng): void {
+  const sp = new Graphics();
+  const pts: [number, number, number][] = [];
+  for (let k = 0; k < 6; k++) pts.push([x0 + range(rng, 0, 880), range(rng, NEAR_BASE - 6, NEAR_BASE + 60), range(rng, 0, 6)]);
+  c.addChild(sp);
+  let t = 0;
+  addTick(c, (dt) => {
+    t += dt;
+    sp.clear();
+    for (const [x, y, ph] of pts) {
+      const a = Math.max(0, Math.sin(t * 1.6 + ph));
+      if (a > 0.05) sp.roundRect(x - 6 * a, y - 1.5, 12 * a, 3, 1.5).fill({ color: P.white, alpha: 0.75 * a });
+    }
+  });
+}
+
+const BROWNSTONE = [0x9c6b52, 0x8a5c46, 0xa87656, 0xb98a6a, 0x7e5a48];
+const NYC_TOWER = [0xc9d1d9, 0xd7d0c4, 0xb7c2cd, 0xe2dccf, 0xa9b6c4, 0xcfc3b0];
+
+/** New York: brownstones with stoops in front of a wall of towers (setbacks, the odd water tank). */
+function nycBack(g: Graphics, x0: number, rng: Rng): void {
+  // back row: towers, tall and packed
+  let x = x0 + range(rng, -40, 0);
+  while (x < x0 + 900) {
+    const w = range(rng, 70, 130), h = range(rng, 220, 420);
+    const col = pick(rng, NYC_TOWER);
+    const top = NEAR_BASE - 40 - h;
+    block(g, x, top, w, h, col);
+    windowGrid(g, x + 8, top + 14, w - 16 - w * 0.06, h - 30, rng, { lit: 0.12 });
+    const crown = rng();
+    if (crown < 0.3) {
+      block(g, x + w * 0.15, top - 46, w * 0.7, 48, lighten(col, 0.08), { radius: 3 });
+      if (crown < 0.12) g.roundRect(x + w / 2 - 2, top - 96, 4, 52, 2).fill(darken(col, 0.2));
+    } else if (crown < 0.4 && w > 90) waterTower(g, x + w * 0.5 - 17, top, rng);
+    x += w + range(rng, 0, 10);
+  }
+  // front row: brownstones (four floors, cornice, stoop) with a street tree now and then
+  x = x0 + range(rng, 0, 30);
+  while (x < x0 + 880) {
+    if (rng() < 0.14) {
+      roundTree(g, x + 30, NEAR_BASE, range(rng, 80, 110));
+      x += 64;
+      continue;
+    }
+    const w = range(rng, 70, 96), h = range(rng, 120, 150);
+    const col = pick(rng, BROWNSTONE);
+    const top = NEAR_BASE - h;
+    contactShadow(g, x + w / 2, NEAR_BASE, w);
+    block(g, x, top, w, h, col);
+    g.roundRect(x - 4, top - 6, w + 8, 10, 3).fill(darken(col, 0.25));
+    for (let fy = top + 14; fy < NEAR_BASE - 46; fy += 28) {
+      for (const fx of [x + 10, x + w / 2 - 7, x + w - 24]) g.roundRect(fx, fy, 14, 20, 3).fill(rng() < 0.2 ? P.warmWindow : 0x5d6b78);
+    }
+    // the stoop: steps up to a door
+    g.poly([x + 8, NEAR_BASE, x + 28, NEAR_BASE - 26, x + 40, NEAR_BASE - 26, x + 40, NEAR_BASE]).fill(darken(col, 0.12));
+    g.roundRect(x + 28, NEAR_BASE - 48, 12, 22, 3).fill(0x3d2f2a);
+    x += w + range(rng, 0, 4);
+  }
+}
+
+/** The NJ Turnpike: tank farms, refinery stacks puffing steam, pylons and Meadowlands reeds. */
+function industrial(c: TickingChunk, g: Graphics, x0: number, rng: Rng): void {
+  const stacks: [number, number][] = [];
+  let x = x0 + range(rng, 0, 60);
+  while (x < x0 + 860) {
+    const r = rng();
+    if (r < 0.45) {
+      // a fat storage tank (white or pale grey) with a domed lid and a stair
+      const w = range(rng, 90, 150), h = range(rng, 60, 90);
+      const col = pick(rng, [0xeef0f2, 0xdfe3e8, 0xe8e1d4]);
+      contactShadow(g, x + w / 2, NEAR_BASE, w);
+      block(g, x, NEAR_BASE - h, w, h, col, { radius: 6 });
+      g.ellipse(x + w / 2, NEAR_BASE - h, w / 2, 8).fill(lighten(col, 0.3));
+      g.moveTo(x + w * 0.15, NEAR_BASE).lineTo(x + w * 0.55, NEAR_BASE - h).stroke({ width: 2, color: 0x8a9099 });
+      g.rect(x, NEAR_BASE - h * 0.45, w, 3).fill({ color: P.black, alpha: 0.06 });
+      x += w + range(rng, 10, 40);
+    } else if (r < 0.72) {
+      // a refinery tower with pipes and a tall stack
+      const h = range(rng, 160, 240);
+      g.rect(x + 10, NEAR_BASE - h * 0.6, 26, h * 0.6).fill(0xb8c0c8);
+      for (let k = 1; k < 5; k++) g.rect(x + 6, NEAR_BASE - (h * 0.6 * k) / 5, 34, 3).fill(0x8a9099);
+      g.rect(x + 48, NEAR_BASE - h, 12, h).fill(0xc8ccd1);
+      g.rect(x + 48, NEAR_BASE - h + 12, 12, 8).fill(0xd8564a);
+      g.rect(x + 48, NEAR_BASE - h + 30, 12, 8).fill(0xd8564a);
+      g.rect(x, NEAR_BASE - 30, 80, 5).fill(0x8a9099);
+      stacks.push([x + 54, NEAR_BASE - h]);
+      x += 80 + range(rng, 20, 60);
+    } else {
+      // a high-voltage pylon
+      const h = range(rng, 150, 200);
+      g.poly([x - 22, NEAR_BASE, x - 4, NEAR_BASE - h, x + 4, NEAR_BASE - h, x + 22, NEAR_BASE]).fill({ color: 0x8a9099, alpha: 0.9 });
+      g.poly([x - 16, NEAR_BASE - 6, x - 2, NEAR_BASE - h + 10, x + 2, NEAR_BASE - h + 10, x + 16, NEAR_BASE - 6]).fill(P.grassFar);
+      for (const y of [NEAR_BASE - h * 0.78, NEAR_BASE - h * 0.6]) g.rect(x - 34, y, 68, 4).fill(0x8a9099);
+      x += range(rng, 70, 120);
+    }
+  }
+  // Meadowlands reeds along the ground
+  for (let rx = x0; rx < x0 + 900; rx += range(rng, 40, 90)) marshGrass(g, rx, NEAR_BASE + 4, range(rng, 24, 50));
+  if (!stacks.length) return;
+  // steam puffs rising from the stacks
+  const puffs = new Graphics();
+  c.addChild(puffs);
+  let t = x0 * 0.01;
+  addTick(c, (dt) => {
+    t += dt;
+    puffs.clear();
+    for (const [sx, sy] of stacks) {
+      for (let k = 0; k < 4; k++) {
+        const p = (t * 0.35 + k / 4) % 1;
+        const r = 8 + p * 18;
+        puffs.circle(sx + p * 30 + Math.sin(p * 6 + k) * 4, sy - 6 - p * 90, r).fill({ color: P.white, alpha: 0.7 * (1 - p) });
+      }
+    }
+  });
+}
+
+/** The Potomac: rowing shells, a tour boat and sailboats; sparkles on the water. */
+function potomac(c: TickingChunk, g: Graphics, x0: number, rng: Rng): void {
+  const r = rng();
+  const bx = x0 + range(rng, 120, 780);
+  if (r < 0.3) {
+    const b = new Graphics();
+    ferry(b, 0.8, P.white);
+    bobbing(c, b, bx, NEAR_BASE - 4 + range(rng, 0, 6));
+  } else if (r < 0.65) {
+    // a rowing shell: long thin hull with a row of rowers and oars
+    const b = new Graphics();
+    b.roundRect(-70, -4, 140, 6, 3).fill(0xd8392b);
+    for (let k = 0; k < 4; k++) {
+      const rx = -45 + k * 28;
+      b.roundRect(rx - 4, -18, 8, 14, 4).fill(pick(rng, [0x3f7fd1, 0xf7c934, 0xe9637a]));
+      b.circle(rx, -22, 4.5).fill(pick(rng, [0xf1c7a1, 0xc68b62, 0x8d5a3b]));
+      b.moveTo(rx, -8).lineTo(rx + 10, 6).stroke({ width: 2, color: 0x7c6a5a });
+    }
+    bobbing(c, b, bx, NEAR_BASE - 2 + range(rng, 0, 4));
+  } else {
+    const b = new Graphics();
+    sailboat(b, 0, 0, range(rng, 0.6, 0.9), rng);
+    bobbing(c, b, bx, NEAR_BASE - 4 + range(rng, 0, 6));
+  }
+  sparkles(c, x0, rng);
+}
+
+/** Washington: low white marble buildings with columns, pediments and domes behind rows of trees
+ * (cherry blossoms in pink), and no skyscrapers. */
+function dcBack(g: Graphics, x0: number, rng: Rng): void {
+  let x = x0 + range(rng, 0, 40);
+  while (x < x0 + 880) {
+    const r = rng();
+    if (r < 0.3) {
+      // a pair of round trees (often cherry blossoms)
+      const pink = rng() < 0.55;
+      for (const dx of [20, 62]) {
+        const s2 = range(rng, 70, 100);
+        if (pink) {
+          g.rect(x + dx - 3, NEAR_BASE - s2 * 0.4, 6, s2 * 0.4).fill(0x6e5446);
+          g.circle(x + dx - 12, NEAR_BASE - s2 * 0.6, s2 * 0.28).fill(pick(rng, CHERRY));
+          g.circle(x + dx + 12, NEAR_BASE - s2 * 0.62, s2 * 0.26).fill(pick(rng, CHERRY));
+          g.circle(x + dx, NEAR_BASE - s2 * 0.78, s2 * 0.3).fill(pick(rng, CHERRY));
+        } else roundTree(g, x + dx, NEAR_BASE, s2, P.leaf);
+      }
+      x += 90;
+      continue;
+    }
+    // A plain federal office block in limestone: flat roof, a simple cornice and a grid of tall
+    // windows. (No columns, pediments or domes here, so the real monuments stay one of a kind.)
+    const w = range(rng, 160, 280), h = range(rng, 64, 104);
+    const col = pick(rng, [0xd9cfb9, 0xd2c7ae, 0xc9c1b1, 0xddd5c6, 0xcbbfa6]);
+    const shade = darken(col, 0.08);
+    const top = NEAR_BASE - h;
+    contactShadow(g, x + w / 2, NEAR_BASE, w);
+    block(g, x, top, w, h, col, { landmark: true, shade });
+    g.roundRect(x - 3, NEAR_BASE - 9, w + 6, 9, 2).fill(darken(col, 0.12));
+    g.roundRect(x - 4, top - 5, w + 8, 8, 3).fill(lighten(col, 0.25));
+    const cols = Math.max(4, Math.floor((w - 20) / 26));
+    const pitch = (w - 20) / cols;
+    for (let k = 0; k < cols; k++) {
+      for (let wy = top + 12; wy < NEAR_BASE - 24; wy += 24) g.roundRect(x + 10 + k * pitch + pitch * 0.25, wy, pitch * 0.5, 14, 2).fill(0x8fa3b4);
+    }
+    // a plain entrance in the middle
+    g.roundRect(x + w / 2 - 12, NEAR_BASE - 26, 24, 17, 3).fill(darken(col, 0.3));
+    x += w + range(rng, 20, 60);
+  }
+}
+
+/** The James: shallow, rocky water with white rapids that shimmer. */
+function jamesRiver(c: TickingChunk, g: Graphics, x0: number, rng: Rng): void {
+  const rocks: [number, number, number][] = [];
+  for (let k = 0; k < 7; k++) {
+    const rx = x0 + range(rng, 0, 880), ry = range(rng, NEAR_BASE - 6, NEAR_BASE + 40), rr = range(rng, 14, 34);
+    g.ellipse(rx, ry, rr, rr * 0.45).fill(pick(rng, [0xb9b2aa, 0xa79f97, 0xc6c0b8]));
+    g.ellipse(rx - rr * 0.3, ry - rr * 0.15, rr * 0.35, rr * 0.12).fill({ color: P.white, alpha: 0.35 });
+    rocks.push([rx, ry, rr]);
+  }
+  if (rng() < 0.4) {
+    // a kayak or two playing in the rapids
+    const b = new Graphics();
+    b.roundRect(-30, -4, 60, 7, 3.5).fill(pick(rng, [0xf2b33d, 0xe8573f, 0x3fa36b]));
+    b.roundRect(-5, -16, 10, 12, 4).fill(0x3f7fd1);
+    b.circle(0, -20, 4.5).fill(0xf1c7a1);
+    b.moveTo(-16, -22).lineTo(16, -6).stroke({ width: 2, color: 0x5d6670 });
+    bobbing(c, b, x0 + range(rng, 100, 800), NEAR_BASE - 2 + range(rng, 0, 4));
+  }
+  // white water curling past the rocks
+  const foam = new Graphics();
+  c.addChild(foam);
+  let t = x0 * 0.003;
+  addTick(c, (dt) => {
+    t += dt;
+    foam.clear();
+    for (const [rx, ry, rr] of rocks) {
+      for (let k = 0; k < 3; k++) {
+        const p = (t * 0.6 + k / 3) % 1;
+        foam.roundRect(rx - rr - 10 - p * 30, ry - 4 + k * 4, 14 + p * 8, 3, 1.5).fill({ color: P.white, alpha: 0.8 * (1 - p) });
+      }
+    }
+  });
+}
+
+/** Richmond: red-brick blocks and warehouses with a few modest towers behind. */
+function richmondBack(g: Graphics, x0: number, rng: Rng): void {
+  // back: a few modest towers
+  let x = x0 + range(rng, 0, 120);
+  while (x < x0 + 860) {
+    const w = range(rng, 70, 110), h = range(rng, 180, 280);
+    const col = pick(rng, [0xc9d1d9, 0xd7cdbf, 0xb7c2cd, 0xe2dccf]);
+    const top = NEAR_BASE - 30 - h;
+    block(g, x, top, w, h, col);
+    windowGrid(g, x + 8, top + 14, w - 16 - w * 0.06, h - 30, rng, { lit: 0.1 });
+    if (rng() < 0.35) g.poly([x, top + 2, x + w / 2, top - 30, x + w, top + 2]).fill(darken(col, 0.08));
+    x += w + range(rng, 120, 280);
+  }
+  // front: brick rows with white trim and the odd tree
+  x = x0 + range(rng, 0, 30);
+  while (x < x0 + 880) {
+    if (rng() < 0.2) {
+      roundTree(g, x + 34, NEAR_BASE, range(rng, 80, 120));
+      x += 76;
+      continue;
+    }
+    const w = range(rng, 90, 150), h = range(rng, 90, 150);
+    const col = pick(rng, BRICK);
+    const top = NEAR_BASE - h;
+    contactShadow(g, x + w / 2, NEAR_BASE, w);
+    block(g, x, top, w, h, col);
+    g.roundRect(x - 3, top - 6, w + 6, 10, 3).fill(0xf3efe6);
+    for (let wy = top + 16; wy < NEAR_BASE - 34; wy += 32) {
+      for (let wx = x + 12; wx < x + w - 20; wx += 24) g.roundRect(wx, wy, 13, 20, 3).fill(rng() < 0.15 ? P.warmWindow : 0x5b4a44);
+    }
+    g.roundRect(x + w / 2 - 10, NEAR_BASE - 34, 20, 34, 6).fill(0x3d2f2a);
+    x += w + range(rng, 2, 14);
+  }
+}
+
+/** Chesapeake marsh (Maryland): grassy hummocks, cattails, egrets and the odd bare tree. */
+function chesapeakeMarsh(g: Graphics, x0: number, rng: Rng): void {
+  let x = x0;
+  while (x < x0 + 900) {
+    const w = range(rng, 120, 260);
+    g.roundRect(x, NEAR_BASE - 4, w, 30, 10).fill(0xa7c46c);
+    marshGrass(g, x + 6, NEAR_BASE + 2, w - 12);
+    for (let k = 0; k < 4; k++) {
+      const cx = x + range(rng, 10, w - 10);
+      g.roundRect(cx - 1, NEAR_BASE - 34, 2, 34, 1).fill(0x7d8f48);
+      g.roundRect(cx - 3, NEAR_BASE - 40, 6, 14, 3).fill(0x7a5434);
+    }
+    if (rng() < 0.4) roundTree(g, x + w * 0.5, NEAR_BASE - 2, range(rng, 80, 120), P.leaf);
+    if (rng() < 0.3) egret(g, x + w * 0.8, NEAR_BASE + 4);
+    x += w + range(rng, 40, 160);
+  }
 }

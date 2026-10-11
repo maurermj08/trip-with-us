@@ -221,6 +221,9 @@ export interface GuideOpts {
 }
 
 const GUIDE_NAMES: Record<NonNullable<Placement['city']>, string> = {
+  'new-york': 'New York',
+  washington: 'Washington',
+  richmond: 'Richmond',
   charleston: 'Charleston',
   savannah: 'Savannah',
   jacksonville: 'Jacksonville',
@@ -469,7 +472,58 @@ function star(g: Graphics, x: number, y: number, r: number, color: number): void
   g.poly(pts).fill(color);
 }
 
+function pizzaBoard(c: Container): void {
+  const b = new Graphics();
+  boardFace(b, 0xd8392b, 0xc22f22);
+  b.roundRect(-245, -60, 490, 40, 6).fill(0xfff4cf);
+  // a giant slice: crust, cheese, pepperoni
+  b.poly([-235, -190, -95, -190, -165, -72]).fill(0xffd166);
+  b.roundRect(-240, -200, 150, 16, 8).fill(0xd9a25c);
+  for (const [px, py] of [[-195, -165], [-140, -168], [-165, -128], [-172, -100]]) b.circle(px, py, 10).fill(0xc0392b);
+  b.ellipse(-190, -150, 14, 4).fill({ color: P.white, alpha: 0.35 });
+  c.addChild(b);
+  const name = signText('BIG SLICE', 54, P.white, '900');
+  name.position.set(90, -170);
+  const pz = signText('PIZZA', 40, 0xffd166, '900');
+  pz.position.set(90, -118);
+  const tag = signText('NEW YORK STYLE  ·  NEXT EXIT', 18, 0xc22f22);
+  tag.position.set(0, -40);
+  c.addChild(name, pz, tag);
+}
+
+function crabsBoard(c: Container): void {
+  const b = new Graphics();
+  boardFace(b, 0x2f6fb0, 0x285f99);
+  b.roundRect(-245, -60, 490, 40, 6).fill(0xffd166);
+  // a happy red crab
+  const x = -165, y = -118, col = 0xe8652c;
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 3; k++) b.moveTo(x + s * 30, y + 6 + k * 8).lineTo(x + s * 58, y + 22 + k * 10).stroke({ width: 6, color: col, cap: 'round' });
+    b.moveTo(x + s * 26, y - 12).lineTo(x + s * 46, y - 40).stroke({ width: 8, color: col, cap: 'round' });
+    b.circle(x + s * 48, y - 48, 15).fill(col);
+    b.poly([x + s * 48, y - 48, x + s * 64, y - 68, x + s * 58, y - 46]).fill(col);
+  }
+  b.ellipse(x, y, 44, 28).fill(col);
+  b.ellipse(x - 14, y - 10, 14, 6).fill({ color: P.white, alpha: 0.35 });
+  for (const s of [-1, 1]) {
+    b.roundRect(x + s * 12 - 2, y - 40, 4, 16, 2).fill(col);
+    b.circle(x + s * 12, y - 42, 7).fill(P.white);
+    b.circle(x + s * 12, y - 42, 3.5).fill(0x24262a);
+  }
+  b.moveTo(x - 12, y + 6).quadraticCurveTo(x, y + 14, x + 12, y + 6).stroke({ width: 3, color: 0x8a2f12, cap: 'round' });
+  c.addChild(b);
+  const name = signText('CRAB', 58, P.white, '900');
+  name.position.set(100, -172);
+  const sh = signText('SHACK', 44, 0xffd166, '900');
+  sh.position.set(100, -118);
+  const tag = signText('STEAMED CRABS  ·  NEXT EXIT', 18, 0x1f4f80);
+  tag.position.set(0, -40);
+  c.addChild(name, sh, tag);
+}
+
 const BOARDS: Partial<Record<BillboardDesign, (c: Container) => void>> = {
+  pizza: pizzaBoard,
+  crabs: crabsBoard,
   duckies: duckiesBoard,
   peaches: peachesBoard,
   oj: ojBoard,
@@ -505,6 +559,8 @@ export class Billboard extends Prop {
       this.ctx.fx.emit(this.ctx.layers.fx, { x: this.x - 160, y: this.y - 420, count: 8, shape, tint, speed: [80, 220], gravity: 300, life: [0.6, 1.0], size: [10, 16] });
     switch (this.design) {
       case 'duckies': sfx.quack(); break;
+      case 'pizza': sfx.pop(); fxAt([0xffd166, 0xc0392b]); break;
+      case 'crabs': sfx.chomp(); fxAt([0xe8652c, 0xffd166]); break;
       case 'peaches': sfx.pop(); fxAt([0xffc48a, 0xf26b5b]); break;
       case 'oj': sfx.glugDing(); fxAt([0xff9f1c, 0xffd166]); break;
       case 'chomp': sfx.chomp(); break;
@@ -575,6 +631,101 @@ const WELCOME_TEXT_X = 34;
 const WELCOME_TEXT_W = 150;
 
 const WELCOME: Record<StateId, WelcomeLook> = {
+  NY: {
+    color: 0x1f3f7f,
+    name: 'NEW YORK',
+    motif: (p) => {
+      // the Big Apple
+      fruit(p, -74, -62, 32, 0xe5483f);
+    },
+  },
+  NJ: {
+    color: 0x2e6f9e,
+    name: 'NEW\nJERSEY',
+    motif: (p) => {
+      // the Garden State: a big sunny flower
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        p.ellipse(-74 + Math.cos(a) * 20, -74 + Math.sin(a) * 20, 12, 12).fill(0xffd166);
+      }
+      p.circle(-74, -74, 14).fill(0xe8913a);
+      p.roundRect(-77, -60, 6, 44, 3).fill(0x4f9a3c);
+      p.ellipse(-62, -34, 12, 5).fill(0x4f9a3c);
+    },
+  },
+  MD: {
+    color: 0x1f6f7a,
+    name: 'MARYLAND',
+    motif: (p) => {
+      // a friendly blue-crab-turned-red (Maryland's favourite)
+      const c = 0xe8652c, x = -74, y = -62;
+      for (const s of [-1, 1]) {
+        for (let k = 0; k < 3; k++) p.moveTo(x + s * 18, y + 4 + k * 5).lineTo(x + s * 36, y + 14 + k * 7).stroke({ width: 4, color: c, cap: 'round' });
+        p.moveTo(x + s * 16, y - 8).lineTo(x + s * 28, y - 26).stroke({ width: 5, color: c, cap: 'round' });
+        p.circle(x + s * 30, y - 32, 9).fill(c);
+        p.poly([x + s * 30, y - 32, x + s * 40, y - 44, x + s * 36, y - 30]).fill(c);
+      }
+      p.ellipse(x, y, 26, 16).fill(c);
+      p.ellipse(x - 8, y - 6, 9, 4).fill({ color: P.white, alpha: 0.35 });
+      for (const s of [-1, 1]) {
+        p.roundRect(x + s * 7 - 1.5, y - 24, 3, 12, 1.5).fill(c);
+        p.circle(x + s * 7, y - 25, 4).fill(P.white);
+        p.circle(x + s * 7, y - 25, 2).fill(0x24262a);
+      }
+    },
+  },
+  DC: {
+    color: 0x23408e,
+    name: 'WASHINGTON\nD.C.',
+    motif: (p) => {
+      // the Monument with the city flag's three stars
+      p.poly([-82, -18, -78, -104, -70, -104, -66, -18]).fill(P.white);
+      p.poly([-78, -104, -74, -118, -70, -104]).fill(P.white);
+      p.rect(-70, -104, 4, 86).fill({ color: P.black, alpha: 0.08 });
+      for (const sx of [-102, -74, -46]) {
+        const pts: number[] = [];
+        for (let k = 0; k < 10; k++) {
+          const a = -Math.PI / 2 + (k * Math.PI) / 5;
+          const r = k % 2 ? 4 : 9;
+          pts.push(sx + Math.cos(a) * r, -126 + 6 + Math.sin(a) * r);
+        }
+        if (sx !== -74) p.poly(pts).fill(0xe5483f);
+      }
+      p.roundRect(-112, -24, 76, 6, 3).fill(0xe5483f);
+    },
+  },
+  VA: {
+    color: 0x1f4f8a,
+    name: 'VIRGINIA',
+    motif: (p) => {
+      // a dogwood blossom (the state flower)
+      for (let k = 0; k < 4; k++) {
+        const a = Math.PI / 4 + (k / 4) * Math.PI * 2;
+        const cx = -74 + Math.cos(a) * 18, cy = -66 + Math.sin(a) * 18;
+        p.ellipse(cx, cy, 16, 16).fill(P.white);
+        p.circle(-74 + Math.cos(a) * 31, -66 + Math.sin(a) * 31, 3.5).fill(0xd9667e);
+      }
+      p.circle(-74, -66, 9).fill(0x9ac05a);
+      for (let k = 0; k < 6; k++) p.circle(-74 + Math.cos(k) * 5, -66 + Math.sin(k) * 5, 2).fill(0xf2c94c);
+    },
+  },
+  NC: {
+    color: 0x2a5d8a,
+    name: 'NORTH\nCAROLINA',
+    motif: (p) => {
+      // a striped lighthouse on the dunes
+      const x = -74;
+      p.roundRect(x - 40, -30, 80, 14, 7).fill(0xe8d49a);
+      p.poly([x - 13, -30, x - 8, -104, x + 8, -104, x + 13, -30]).fill(P.white);
+      for (let k = 0; k < 4; k++) {
+        const y0 = -38 - k * 18, y1 = y0 - 9;
+        const w0 = 13 - (k * 18 + 8) * 0.067, w1 = w0 - 9 * 0.067;
+        p.poly([x - w0, y0, x - w1, y1, x + w1, y1, x + w0, y0]).fill(0x24262a);
+      }
+      p.roundRect(x - 10, -116, 20, 12, 3).fill(0xfff1a8);
+      p.poly([x - 12, -116, x, -128, x + 12, -116]).fill(0x24262a);
+    },
+  },
   SC: {
     color: P.scBlue,
     name: 'SOUTH\nCAROLINA',

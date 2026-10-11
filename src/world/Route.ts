@@ -13,7 +13,7 @@ export const WORLD_START = 0;
 export const CAR_START_X = 860;
 
 /** The Ravenel Bridge (kept for older code; use BRIDGES for all of them). */
-export const BRIDGE: BridgeSpec = BRIDGES[0];
+export const BRIDGE: BridgeSpec = BRIDGES.find((b) => b.id === 'ravenel')!;
 
 const zone = (id: string) => ZONE_LIST.find((z) => z.id === id)!;
 

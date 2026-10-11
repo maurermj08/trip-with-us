@@ -3,6 +3,7 @@
 // dip and come back up full (splash + shrimp sparkle). Tap again while it's busy: it chugs
 // along with a wake and smoke puffs, then drifts back.
 import { Container, Graphics } from 'pixi.js';
+import { TRIP_SHIFT } from '../world/trip/shift';
 import { Prop } from '../props/Prop';
 import type { Ctx } from '../core/Ctx';
 import { P, darken } from '../style/palette';
@@ -17,7 +18,7 @@ const ROPE = 0x6b5a4a;
 const NET = 0x9aa3ad;
 
 /** Boat x positions: the Georgia coast stretches (and one in the marsh before the port). */
-export const FISHING_BOAT_X = [150600, 177800, 180900, 184300, 203300, 207000];
+export const FISHING_BOAT_X = [150600, 177800, 180900, 184300, 203300, 207000].map((x) => TRIP_SHIFT + x);
 
 export interface BoatLook {
   hull: number;

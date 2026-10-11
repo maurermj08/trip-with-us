@@ -1,9 +1,9 @@
 // Pure data types for the trip (no Pixi). World units: x grows toward the destination.
 
-export type CityId = 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'potato-world';
-export type StateId = 'SC' | 'GA' | 'FL';
-export type BridgeId = 'ravenel' | 'talmadge' | 'main-street' | 'i4-flyover';
-export type BridgeKind = 'cable-stayed' | 'lift' | 'flyover';
+export type CityId = 'new-york' | 'washington' | 'richmond' | 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'potato-world';
+export type StateId = 'NY' | 'NJ' | 'MD' | 'DC' | 'VA' | 'NC' | 'SC' | 'GA' | 'FL';
+export type BridgeId = 'gwb' | 'memorial' | 'james-river' | 'ravenel' | 'talmadge' | 'main-street' | 'i4-flyover';
+export type BridgeKind = 'suspension' | 'stone-arch' | 'girder' | 'cable-stayed' | 'lift' | 'flyover';
 
 export interface BridgeSpec {
   id: BridgeId;
@@ -35,7 +35,7 @@ export interface CitySpec {
 }
 
 export type ZoneKind = 'home' | 'stop' | 'bridge' | 'city' | 'airport';
-export type Surface = 'sidewalk' | 'lot' | 'cobble' | 'riverwalk' | 'pavers' | 'parade';
+export type Surface = 'sidewalk' | 'lot' | 'cobble' | 'riverwalk' | 'pavers' | 'parade' | 'avenue' | 'mall' | 'brick';
 
 export interface ZoneSpec {
   id: string;

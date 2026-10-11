@@ -110,6 +110,9 @@ Each `Prop` picks its layer with `prop.layer`. Props are culled by `extent`, upd
 - `Tweens` drops a tween or timer that throws, so one destroyed target can't freeze the game. Still guard `destroyed` in tweens on short-lived objects (chips, garage).
 - A scenery chunk can animate: set `onTick(dt)` on the container its builder returns (`ChunkLayer.tick`, called every frame). Keep rng consumption unchanged when adding animated parts, so layouts stay deterministic.
 - `Tweens.wobble` saves the base rotation and scale and restores them when it finishes. Don't run your own tween on the same object's rotation or scale at the same time.
+- **Trip order:** Home → New York → Washington → Richmond → Charleston → Savannah → Jacksonville → Orlando → Potato World.
+  - The north-east legs were added in front of the original trip. Everything from the original Home → Charleston leg onward is written as `TRIP_SHIFT + <original x>` (`world/trip/shift.ts`).
+  - New absolute positions should be derived from city or bridge specs where possible.
 - Landmark positions are relative to their city's `x0`. The arrival (greeters at `x0 + CITY_LAYOUT.greeters`, end park at `WORLD_END`) comes from the final city.
 - Audio only starts after a user gesture (`synth.unlock()` runs on every input).
 - Deployment: every push to `main` builds and deploys to GitHub Pages (`.github/workflows/deploy.yml`, tests must pass). `vite.config.ts` uses `base: './'`, so keep every asset URL relative (no leading `/`).

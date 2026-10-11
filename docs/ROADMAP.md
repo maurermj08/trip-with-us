@@ -97,6 +97,14 @@ The trip now runs **Home → Charleston → Savannah → Jacksonville → Orland
 - **Potato World:** the Phase 4 Disney parody has no reserved stretch of road in Orlando yet. Only the teaser billboard exists, at 282.5k.
 - **Region seams:** the far layer switches abruptly where water and land regions meet, for example at the regional airport.
 
+## Phase 3b: The north-east (2026-10-11)
+
+The trip now starts with **Home → New York → Washington DC → Richmond** before the Carolinas.
+- **Bridges:** New York comes in over the George Washington Bridge, DC over the Arlington Memorial Bridge, and Richmond over the James River.
+- **New York and DC** are the biggest cities, with 12k of street each.
+- **Signs:** new welcome signs for NY, NJ, MD, DC, VA and NC, plus Big Slice Pizza and Crab Shack billboards.
+- **Code:** the original trip moved later by `TRIP_SHIFT` (138k, `world/trip/shift.ts`).
+
 ## Phase 4: Landmarks (Duckies, Potato World, Over the Line)
 
 **Goal:** a landmark kit. Duckies needs a polish pass; Potato World and Over the Line are parodies.

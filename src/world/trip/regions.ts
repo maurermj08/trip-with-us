@@ -1,9 +1,12 @@
 // Scenery regions along the trip, the skyline style above them, and the time of day.
 import { AIRPORTS, CITIES } from './cities';
+import { TRIP_SHIFT } from './shift';
 import type { CitySpec, SkyKey } from './types';
 
 export type Region =
-  // Home → Charleston
+  // Home → New York → Washington → Richmond (the north-east legs)
+  | 'hudson' | 'nyc' | 'industrial' | 'potomac' | 'dc' | 'jamesRiver' | 'richmond'
+  // Home → Charleston (the original first leg)
   | 'suburb' | 'pines' | 'farm' | 'town' | 'duckies' | 'lowcountry' | 'marsh' | 'harbor' | 'charleston'
   // Georgia
   | 'port' | 'savannah' | 'gaCoast'
@@ -14,56 +17,76 @@ export type Region =
 
 export const REGIONS: [number, Region][] = [
   [0, 'suburb'],
+  // ---- the north-east legs ----
   [3600, 'pines'],
-  [10000, 'farm'],
-  [16500, 'town'],
-  [25300, 'duckies'],
-  [29200, 'pines'],
-  [40000, 'farm'],
-  [48000, 'town'],
-  [56000, 'lowcountry'],
-  [68000, 'marsh'],
-  [75400, 'harbor'],
-  [80800, 'charleston'],
+  [9000, 'town'],
+  [13800, 'hudson'],
+  [23000, 'nyc'],
+  [35000, 'industrial'],
+  [44000, 'farm'],
+  [52000, 'pines'],
+  [59000, 'marsh'],
+  [66000, 'farm'],
+  [74000, 'town'],
+  [81500, 'potomac'],
+  [90400, 'dc'],
+  [102400, 'pines'],
+  [110000, 'farm'],
+  [117500, 'town'],
+  [122500, 'jamesRiver'],
+  [128200, 'richmond'],
+  [134400, 'suburb'],
+  // ---- the original legs (TRIP_SHIFT later than before) ----
+  [TRIP_SHIFT + 3600, 'pines'],
+  [TRIP_SHIFT + 10000, 'farm'],
+  [TRIP_SHIFT + 16500, 'town'],
+  [TRIP_SHIFT + 25300, 'duckies'],
+  [TRIP_SHIFT + 29200, 'pines'],
+  [TRIP_SHIFT + 40000, 'farm'],
+  [TRIP_SHIFT + 48000, 'town'],
+  [TRIP_SHIFT + 56000, 'lowcountry'],
+  [TRIP_SHIFT + 68000, 'marsh'],
+  [TRIP_SHIFT + 75400, 'harbor'],
+  [TRIP_SHIFT + 80800, 'charleston'],
   // → Savannah
-  [86600, 'lowcountry'],
-  [96000, 'pines'],
-  [106000, 'farm'],
-  [116000, 'town'],
-  [124000, 'lowcountry'],
-  [140000, 'marsh'],
-  [154000, 'port'],
-  [162800, 'savannah'],
+  [TRIP_SHIFT + 86600, 'lowcountry'],
+  [TRIP_SHIFT + 96000, 'pines'],
+  [TRIP_SHIFT + 106000, 'farm'],
+  [TRIP_SHIFT + 116000, 'town'],
+  [TRIP_SHIFT + 124000, 'lowcountry'],
+  [TRIP_SHIFT + 140000, 'marsh'],
+  [TRIP_SHIFT + 154000, 'port'],
+  [TRIP_SHIFT + 162800, 'savannah'],
   // → Jacksonville
-  [168600, 'lowcountry'],
-  [176000, 'gaCoast'],
-  [186000, 'pines'],
-  [194000, 'airport'],
-  [201000, 'gaCoast'],
-  [210000, 'marsh'],
-  [218000, 'flatwoods'],
-  [226000, 'pasture'],
-  [232000, 'town'],
-  [237000, 'river'],
-  [244800, 'jacksonville'],
+  [TRIP_SHIFT + 168600, 'lowcountry'],
+  [TRIP_SHIFT + 176000, 'gaCoast'],
+  [TRIP_SHIFT + 186000, 'pines'],
+  [TRIP_SHIFT + 194000, 'airport'],
+  [TRIP_SHIFT + 201000, 'gaCoast'],
+  [TRIP_SHIFT + 210000, 'marsh'],
+  [TRIP_SHIFT + 218000, 'flatwoods'],
+  [TRIP_SHIFT + 226000, 'pasture'],
+  [TRIP_SHIFT + 232000, 'town'],
+  [TRIP_SHIFT + 237000, 'river'],
+  [TRIP_SHIFT + 244800, 'jacksonville'],
   // → Orlando
-  [250600, 'flatwoods'],
-  [256000, 'duckies'],
-  [259900, 'flatwoods'],
-  [262000, 'citrus'],
-  [272000, 'pasture'],
-  [280000, 'flatwoods'],
-  [290000, 'lakes'],
-  [296000, 'airport'],
-  [306000, 'citrus'],
-  [314000, 'floridaSuburb'],
-  [326800, 'orlando'],
+  [TRIP_SHIFT + 250600, 'flatwoods'],
+  [TRIP_SHIFT + 256000, 'duckies'],
+  [TRIP_SHIFT + 259900, 'flatwoods'],
+  [TRIP_SHIFT + 262000, 'citrus'],
+  [TRIP_SHIFT + 272000, 'pasture'],
+  [TRIP_SHIFT + 280000, 'flatwoods'],
+  [TRIP_SHIFT + 290000, 'lakes'],
+  [TRIP_SHIFT + 296000, 'airport'],
+  [TRIP_SHIFT + 306000, 'citrus'],
+  [TRIP_SHIFT + 314000, 'floridaSuburb'],
+  [TRIP_SHIFT + 326800, 'orlando'],
   // World Drive, then the park.
-  [332600, 'floridaSuburb'],
-  [334400, 'potatoWorld'],
+  [TRIP_SHIFT + 332600, 'floridaSuburb'],
+  [TRIP_SHIFT + 334400, 'potatoWorld'],
 ];
 
-export const WATER_REGIONS = new Set<Region>(['harbor', 'marsh', 'port', 'river', 'gaCoast']);
+export const WATER_REGIONS = new Set<Region>(['harbor', 'marsh', 'port', 'river', 'gaCoast', 'hudson', 'potomac', 'jamesRiver']);
 
 export function regionAt(x: number): Region {
   let r: Region = REGIONS[0][1];
@@ -75,9 +98,10 @@ export function regionAt(x: number): Region {
 }
 
 /** What the far haze skyline shows. City skylines start rising ~6k before each city. */
-export type SkylineStyle = 'hills' | 'town' | 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'potato' | 'airport' | 'flat';
+export type SkylineStyle = 'hills' | 'town' | 'nyc' | 'dc' | 'richmond' | 'charleston' | 'savannah' | 'jacksonville' | 'orlando' | 'potato' | 'airport' | 'flat';
 
 const CITY_SKYLINE: Record<CitySpec['id'], SkylineStyle> = {
+  'new-york': 'nyc', washington: 'dc', richmond: 'richmond',
   charleston: 'charleston', savannah: 'savannah', jacksonville: 'jacksonville', orlando: 'orlando', 'potato-world': 'potato',
 };
 const isCitySkyline = (s: SkylineStyle) => Object.values(CITY_SKYLINE).includes(s);
@@ -88,7 +112,7 @@ const SKYLINE: [number, SkylineStyle][] = (() => {
     if (r === 'town' || r === 'duckies') keys.push([x, 'town']);
     else if (r === 'flatwoods' || r === 'citrus' || r === 'pasture' || r === 'lakes' || r === 'floridaSuburb') keys.push([x, 'flat']);
     else if (r === 'airport') keys.push([x, 'airport']);
-    else if (r !== 'charleston' && r !== 'savannah' && r !== 'jacksonville' && r !== 'orlando' && r !== 'potatoWorld') keys.push([x, 'hills']);
+    else if (!['charleston', 'savannah', 'jacksonville', 'orlando', 'potatoWorld', 'nyc', 'dc', 'richmond'].includes(r)) keys.push([x, 'hills']);
   }
   for (const c of CITIES) {
     keys.push([c.x0 - 6000, CITY_SKYLINE[c.id]]);

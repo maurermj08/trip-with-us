@@ -1,4 +1,5 @@
 import type { Game } from './Game';
+import { TRIP_SHIFT } from '../world/trip/shift';
 import { AIRPORTS, BRIDGES, CITIES, DUCKIES_STOPS, GREET_X, RAMPS, ROUTE, ZONES, mileMarkerX } from '../world/Route';
 
 /** ?debug=1 overlay: position readout and jump-to-section buttons (dev only). */
@@ -11,7 +12,7 @@ export function installDebug(game: Game): void {
   // Generated from the trip data so new cities, bridges and airports show up automatically.
   const welcome = (st: string) => ROUTE.find((p) => p.kind === 'welcome' && p.state === st)!.x - 600;
   const jumps: [string, number][] = [
-    ['home', 860], ['farm', 11000], ['duckies', ZONES.duckies[0] + 200], ['duckies-fl', DUCKIES_STOPS[1] + 200], ['ramp', RAMPS[0].x - 1500], ['SC', welcome('SC')],
+    ['home', 860], ['farm', TRIP_SHIFT + 11000], ['duckies', ZONES.duckies[0] + 200], ['duckies-fl', DUCKIES_STOPS[1] + 200], ['ramp', RAMPS[0].x - 1500], ['SC', welcome('SC')],
     ...BRIDGES.map((b): [string, number] => [b.id, b.start - 600]),
     ...CITIES.map((c): [string, number] => [c.id, c.x0 + 600]),
     ...AIRPORTS.map((a): [string, number] => [`airport-${a.id}`, a.x0 - 600]),

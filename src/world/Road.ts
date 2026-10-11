@@ -23,6 +23,65 @@ function spanAt(x: number): BridgeSpec | null {
 }
 const underBridge = (x: number) => spanAt(x) !== null;
 
+/** Arlington Memorial Bridge (Washington): granite arches, balustrades and no Jersey barrier. */
+const MEMORIAL = BRIDGES.find((b) => b.id === 'memorial') ?? null;
+const onMemorial = (x: number) => !!MEMORIAL && x >= MEMORIAL.start && x <= MEMORIAL.end;
+const GRANITE = 0xe2dccd;
+const GRANITE_SHADE = 0xcdc5b2;
+
+/** Granite arch spans under a stone-arch bridge: piers with a round arch between each pair. */
+function stoneArches(g: Graphics, br: BridgeSpec, x0: number, W: number, h: (x: number) => number): void {
+  const step = br.pierStep;
+  const deckY = (x: number) => h(x) + ROAD_NEAR + 16;
+  for (let p = Math.floor((x0 - step) / step) * step; p < x0 + W + step; p += step) {
+    if (p < br.span[0] - step || p > br.span[1]) continue;
+    const a = Math.max(p, br.span[0] - 60), b = Math.min(p + step, br.span[1] + 60);
+    if (b - a < 80) continue;
+    const pw = 22;
+    const spring = WATER_Y - 6;
+    // spandrel wall: deck underside along the top, the arch opening cut along the bottom
+    const pts: number[] = [];
+    for (let x = a; x <= b; x += 20) pts.push(x, deckY(x));
+    pts.push(b, deckY(b), b, WATER_Y + 6, b - pw, WATER_Y + 6, b - pw, spring);
+    const l = a + pw, r = b - pw;
+    const crown = Math.min(deckY((a + b) / 2) + 14, spring - 10);
+    for (let k = 0; k <= 24; k++) {
+      const t = k / 24;
+      const ang = t * Math.PI;
+      pts.push(r - (r - l) * (0.5 - 0.5 * Math.cos(ang)), spring - (spring - crown) * Math.sin(ang));
+    }
+    pts.push(l, spring, l, WATER_Y + 6, a, WATER_Y + 6);
+    g.poly(pts).fill(GRANITE);
+    // right-side shade on each pier, the arch ring and a keystone
+    g.rect(b - pw * 0.6, deckY(b), pw * 0.6, WATER_Y + 6 - deckY(b)).fill({ color: P.black, alpha: 0.06 });
+    const ring: number[] = [];
+    for (let k = 0; k <= 24; k++) {
+      const ang = (k / 24) * Math.PI;
+      ring.push(r - (r - l) * (0.5 - 0.5 * Math.cos(ang)), spring - (spring - crown) * Math.sin(ang));
+    }
+    for (let k = 24; k >= 0; k--) {
+      const ang = (k / 24) * Math.PI;
+      ring.push(r + 6 - (r - l + 12) * (0.5 - 0.5 * Math.cos(ang)), spring - (spring - crown + 6) * Math.sin(ang));
+    }
+    g.poly(ring).fill(GRANITE_SHADE);
+    g.roundRect((l + r) / 2 - 6, crown - 10, 12, 14, 2).fill(GRANITE_SHADE);
+    // a soft reflection of the arch in the water
+    g.ellipse((l + r) / 2, WATER_Y + 18, (r - l) * 0.42, 6).fill({ color: P.white, alpha: 0.18 });
+  }
+}
+
+/** The granite balustrade on the far side of the Memorial Bridge deck (instead of a Jersey barrier). */
+function balustrade(g: Graphics, a: number, b: number, h: (x: number) => number, base: number, height: number): void {
+  const top = (x: number) => h(x) + base - height;
+  g.poly([a, top(a), b + 0.5, top(b), b + 0.5, top(b) + 6, a, top(a) + 6]).fill(GRANITE);
+  g.poly([a, top(a), b + 0.5, top(b), b + 0.5, top(b) + 2, a, top(a) + 2]).fill({ color: P.white, alpha: 0.6 });
+  g.poly([a, h(a) + base - 7, b + 0.5, h(b) + base - 7, b + 0.5, h(b) + base + 2, a, h(a) + base + 2]).fill(GRANITE_SHADE);
+  for (let x = Math.ceil(a / 12) * 12; x < b; x += 12) {
+    const t = top(x) + 6, bot = h(x) + base - 7;
+    g.roundRect(x - 2.5, t, 5, bot - t, 2.5).fill(GRANITE);
+  }
+}
+
 /** The St. Johns (Main Street) shoreline: a sandy curve from the span's start, bowing toward the
  * viewer and to the left. Sampled once; `shoreY(x)` gives the curve's y over [start - 300, start]. */
 const SHORE = (() => {
@@ -58,6 +117,9 @@ const SURFACE: Record<NonNullable<ZoneSpec['surface']>, [number, number, number]
   riverwalk: [0xe6e0d2, 0xd2cab6, 18],
   pavers: [0xc98f6c, 0xe2b79a, 18],
   parade: [0xf3c6c9, 0xfbe3c4, 20],
+  avenue: [0xc9ccd1, 0xb3b7bd, 18],
+  mall: [0xe8dfc8, 0xd7cba9, 20],
+  brick: [0xb8735a, 0xd29a80, 18],
 };
 
 export function roadLayer(): ChunkLayer {
@@ -113,6 +175,20 @@ export function roadLayer(): ChunkLayer {
         g.poly([s1 - 1, top, s1 + 170, WATER_Y, s1 + 184, WATER_Y, s1 + 13, top]).fill(0xe6d7a6);
       }
     }
+    // George Washington Bridge: the Hudson's banks run diagonally toward the viewer at both ends
+    // (water on the river side, a sandy rim, grass on the land side).
+    for (const br of BRIDGES) {
+      if (br.id !== 'gwb') continue;
+      for (const [sx, side] of [[br.span[0], -1], [br.span[1], 1]] as const) {
+        if (sx + 1000 < x0 || sx - 1000 > x0 + W) continue;
+        const top = h(sx) + ROAD_NEAR + 14;
+        const y2 = top + 700;
+        const bx = sx + side * 0.9 * (y2 - top); // where the shoreline leaves the screen
+        g.poly([sx, top, bx, y2, sx - side * 400, y2, sx - side * 400, top]).fill(P.water);
+        g.poly([sx, top, bx, y2, bx + side * 16, y2, sx + side * 16, top]).fill(0xe6d7a6);
+        g.poly([sx + side * 16, top, bx + side * 16, y2, bx + side * 22, y2, sx + side * 22, top]).fill({ color: P.white, alpha: 0.35 });
+      }
+    }
     for (const br of BRIDGES) {
       if (br.end < x0 || br.start > x0 + W) continue;
       if (br.under === 'water') {
@@ -121,12 +197,18 @@ export function roadLayer(): ChunkLayer {
           if (spanAt(sx) === br) g.roundRect(sx, WATER_Y + range(rng, 10, 200), range(rng, 30, 80), 4, 2).fill({ color: P.white, alpha: 0.5 });
         }
       }
+      if (br.kind === 'stone-arch') {
+        stoneArches(g, br, x0, W, h);
+        continue;
+      }
       // Piers (round columns under the flyover).
       const pier = 0xd2d6db;
       for (let x = Math.ceil(x0 / br.pierStep) * br.pierStep; x < x0 + W; x += br.pierStep) {
         if (x <= br.start || x >= br.end) continue;
         // (the St. Johns crossing's piers stand only in the water, never on the banks)
         if (br.id === 'main-street' && spanAt(x) !== br) continue;
+        // (the George Washington Bridge hangs from its towers: no piers, just the tower footings)
+        if (br.id === 'gwb') continue;
         const top = h(x) + ROAD_NEAR + 14;
         if (top < WATER_Y - 10) {
           const w = br.kind === 'flyover' ? 26 : 32;
@@ -140,17 +222,23 @@ export function roadLayer(): ChunkLayer {
     for (let k = 0; k < xs.length - 1; k++) {
       const a = xs[k], b = xs[k + 1];
       if (isOpenRoad(a)) continue;
+      if (onMemorial(a)) {
+        balustrade(g, a, b, h, ROAD_FAR + 2, BARRIER_H + 2);
+        continue;
+      }
       const top = (x: number) => h(x) + ROAD_FAR - BARRIER_H;
       g.poly([a, top(a), b + 0.5, top(b), b + 0.5, h(b) + ROAD_FAR + 2, a, h(a) + ROAD_FAR + 2]).fill(P.barrier);
       g.poly([a, top(a), b + 0.5, top(b), b + 0.5, top(b) + 3, a, top(a) + 3]).fill({ color: P.white, alpha: 0.45 });
       g.poly([a, h(a) + ROAD_FAR - 8, b + 0.5, h(b) + ROAD_FAR - 8, b + 0.5, h(b) + ROAD_FAR + 2, a, h(a) + ROAD_FAR + 2]).fill(P.barrierShade);
     }
     for (let x = Math.ceil(x0 / 120) * 120; x < x0 + W; x += 120) {
-      if (isOpenRoad(x)) continue;
+      if (isOpenRoad(x) || onMemorial(x)) continue;
       g.rect(x, h(x) + ROAD_FAR - BARRIER_H + 3, 1.5, BARRIER_H - 3).fill({ color: P.black, alpha: 0.06 });
     }
     for (let x = Math.ceil(x0 / 640) * 640; x < x0 + W; x += 640) {
       if (isOpenRoad(x) || isOpenRoad(x + 40)) continue;
+      // (the Memorial Bridge has its own lamp posts, built with the bridge)
+      if (onMemorial(x) || onMemorial(x + 60)) continue;
       lightPole(g, x, h(x) + ROAD_FAR - BARRIER_H);
     }
 
@@ -162,7 +250,7 @@ export function roadLayer(): ChunkLayer {
       const [fill, curb, hh] = SURFACE[z.surface ?? 'sidewalk'];
       g.rect(a, h(a) + ROAD_FAR - hh, b - a + 0.5, hh).fill(fill);
       g.rect(a, h(a) + ROAD_FAR - 4, b - a + 0.5, 4).fill(curb);
-      if (z.surface === 'cobble' || z.surface === 'pavers' || z.surface === 'parade') {
+      if (z.surface === 'cobble' || z.surface === 'pavers' || z.surface === 'parade' || z.surface === 'brick' || z.surface === 'avenue') {
         for (let cx = a; cx < b; cx += 10) g.rect(cx, h(a) + ROAD_FAR - hh + 6, 1, hh - 10).fill({ color: P.black, alpha: 0.06 });
       }
     }
@@ -178,7 +266,12 @@ export function roadLayer(): ChunkLayer {
       const a = xs[k], b = xs[k + 1];
       const deck = roadHeight(a) > 2 || underBridge(a);
       g.poly([a, h(a) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR, b + 0.5, h(b) + ROAD_NEAR + (deck ? 16 : 5), a, h(a) + ROAD_NEAR + (deck ? 16 : 5)])
-        .fill(deck ? 0xd2d6db : P.gravel);
+        .fill(deck ? (onMemorial(a) ? GRANITE : 0xd2d6db) : P.gravel);
+    }
+    // Memorial Bridge: a dentil course along the near deck edge.
+    for (let x = Math.ceil(x0 / 16) * 16; x < x0 + W; x += 16) {
+      if (!onMemorial(x) || roadHeight(x) <= 2 && !underBridge(x)) continue;
+      g.rect(x, h(x) + ROAD_NEAR + 10, 8, 6).fill(GRANITE_SHADE);
     }
 
     // Lines: yellow left edge (far side), white dashes, white near edge.
